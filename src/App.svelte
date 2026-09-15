@@ -3,6 +3,7 @@
   import { Loader2, Shield } from '@lucide/svelte';
   import { vault } from '$lib/stores';
   import { SetupVault, UnlockVault } from '$lib/components/auth';
+  import { MainVault } from '$lib/components/vault';
 
   onMount(async () => {
     await vault.checkInitialState();
@@ -42,9 +43,6 @@
   {:else if vault.status === 'locked'}
     <UnlockVault />
   {:else}
-    <!-- Main vault view will be connected in Step 5 -->
-    <div class="p-8 text-center">
-      <p class="text-emerald-400">Vault unlocked successfully!</p>
-    </div>
+    <MainVault onOpenAddModal={() => {}} />
   {/if}
 </div>
