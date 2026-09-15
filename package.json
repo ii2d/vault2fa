@@ -14,7 +14,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "audit": "audit-ci --config ./audit-ci.json"
+    "audit": "pnpm audit --registry https://registry.npmjs.org/ --audit-level moderate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -22,7 +22,6 @@
     "@tailwindcss/vite": "^4.3.3",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.3",
-    "audit-ci": "^7.1.0",
     "eslint": "^10.10.0",
     "eslint-plugin-svelte": "^3.23.0",
     "globals": "^17.12.0",
