@@ -11,19 +11,37 @@
     ChevronUp,
     AlertCircle,
     Loader2,
+    CheckSquare,
+    Square,
+    Layers,
+    ShieldCheck,
   } from '@lucide/svelte';
-  import { cleanSecret, isValidBase32, parseOtpUri } from '$lib/core/totp';
+  import {
+    cleanSecret,
+    isValidBase32,
+    parseOtpUri,
+    isGoogleMigrationUri,
+    parseGoogleMigrationUri,
+    convertMigrationAccountsToEntries,
+    type MigrationAccount,
+  } from '$lib/core/totp';
   import { vault } from '$lib/stores';
   import type { OTPAlgorithm, OTPType } from '$lib/types';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
-  let activeTab = $state<'scan' | 'manual'>('scan');
+  let activeTab = $state<'scan' | 'manual' | 'migration'>('scan');
   let videoEl = $state<HTMLVideoElement | null>(null);
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let scannerControls = $state<IScannerControls | null>(null);
   let scannerError = $state<string>('');
   let isScanning = $state(false);
+
+  // Migration State
+  let migrationAccounts = $state<MigrationAccount[]>([]);
+  let selectedMigrationIndices = $state<number[]>([]);
+  let migrationGroupId = $state<string>('');
+  let isImportingMigration = $state(false);
 
   // Manual Form State
   let issuer = $state('');
@@ -73,8 +91,29 @@
 
   async function handleScannedText(text: string) {
     stopScanner();
+    const trimmed = text.trim();
+
+    // Check if scanned QR code is Google Authenticator Migration
+    if (isGoogleMigrationUri(trimmed)) {
+      try {
+        const parsed = parseGoogleMigrationUri(trimmed);
+        if (parsed.length === 0) {
+          scannerError = 'No accounts found in this migration QR code.';
+          return;
+        }
+        migrationAccounts = parsed;
+        selectedMigrationIndices = parsed.map((_, i) => i);
+        migrationGroupId = vault.activeGroupId ?? '';
+        activeTab = 'migration';
+        return;
+      } catch (err: unknown) {
+        scannerError = (err as Error).message || 'Failed to parse Google Authenticator QR payload.';
+        return;
+      }
+    }
+
     try {
-      const parsed = parseOtpUri(text);
+      const parsed = parseOtpUri(trimmed);
       await vault.addEntry({
         issuer: parsed.issuer || 'Unnamed',
         label: parsed.label || 'Account',
@@ -109,6 +148,24 @@
       }
     } catch {
       scannerError = 'Could not find a valid 2FA QR code in the uploaded image.';
+    }
+  }
+
+  // Check if manual secret is a migration URL
+  function handleSecretChange() {
+    if (isGoogleMigrationUri(secret)) {
+      try {
+        const parsed = parseGoogleMigrationUri(secret);
+        if (parsed.length > 0) {
+          migrationAccounts = parsed;
+          selectedMigrationIndices = parsed.map((_, i) => i);
+          migrationGroupId = groupId || (vault.activeGroupId ?? '');
+          activeTab = 'migration';
+          secret = '';
+        }
+      } catch {
+        // keep typing
+      }
     }
   }
 
@@ -154,6 +211,53 @@
     }
   }
 
+  function toggleMigrationAccount(index: number) {
+    if (selectedMigrationIndices.includes(index)) {
+      selectedMigrationIndices = selectedMigrationIndices.filter((i) => i !== index);
+    } else {
+      selectedMigrationIndices = [...selectedMigrationIndices, index];
+    }
+  }
+
+  function toggleSelectAllMigration() {
+    if (selectedMigrationIndices.length === migrationAccounts.length) {
+      selectedMigrationIndices = [];
+    } else {
+      selectedMigrationIndices = migrationAccounts.map((_, i) => i);
+    }
+  }
+
+  async function handleConfirmMigration() {
+    if (selectedMigrationIndices.length === 0) return;
+
+    try {
+      isImportingMigration = true;
+      const selected = migrationAccounts.filter((_, i) => selectedMigrationIndices.includes(i));
+      const newEntries = convertMigrationAccountsToEntries(selected, migrationGroupId || undefined);
+
+      for (const entry of newEntries) {
+        await vault.addEntry({
+          issuer: entry.issuer,
+          label: entry.label,
+          secret: entry.secret,
+          type: entry.type,
+          algorithm: entry.algorithm,
+          digits: entry.digits,
+          period: entry.period,
+          counter: entry.counter,
+          groupId: entry.groupId,
+        });
+      }
+
+      resetForm();
+      onClose();
+    } catch (err: unknown) {
+      scannerError = (err as Error).message || 'Failed to import migration accounts.';
+    } finally {
+      isImportingMigration = false;
+    }
+  }
+
   function resetForm() {
     issuer = '';
     label = '';
@@ -167,13 +271,15 @@
     showAdvanced = false;
     formError = '';
     scannerError = '';
+    migrationAccounts = [];
+    selectedMigrationIndices = [];
+    migrationGroupId = '';
     stopScanner();
   }
 
   $effect(() => {
     if (isOpen) {
       if (activeTab === 'scan') {
-        // slight delay to let video element render in DOM
         setTimeout(() => startScanner(), 100);
       } else {
         stopScanner();
@@ -201,7 +307,20 @@
     >
       <!-- Dialog Header -->
       <div class="flex items-center justify-between border-b border-white/10 px-6 py-4">
-        <h2 id="add-account-title" class="text-base font-bold text-white">Add 2FA Account</h2>
+        <div class="flex items-center gap-2">
+          {#if activeTab === 'migration'}
+            <div
+              class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-400"
+            >
+              <Layers class="h-4 w-4" />
+            </div>
+            <h2 id="add-account-title" class="text-base font-bold text-white">
+              Import Google Authenticator
+            </h2>
+          {:else}
+            <h2 id="add-account-title" class="text-base font-bold text-white">Add 2FA Account</h2>
+          {/if}
+        </div>
         <button
           type="button"
           onclick={onClose}
@@ -212,37 +331,157 @@
         </button>
       </div>
 
-      <!-- Tab Switcher -->
-      <div class="flex border-b border-white/10 bg-zinc-950/40 p-2">
-        <button
-          type="button"
-          onclick={() => (activeTab = 'scan')}
-          class="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
-          'scan'
-            ? 'bg-zinc-800 text-white shadow-sm'
-            : 'text-zinc-400 hover:text-zinc-200'}"
-        >
-          <QrCode class="h-4 w-4 text-indigo-400" />
-          <span>Scan QR Code</span>
-        </button>
+      <!-- Tab Switcher (shown when not in migration review) -->
+      {#if activeTab !== 'migration'}
+        <div class="flex border-b border-white/10 bg-zinc-950/40 p-2">
+          <button
+            type="button"
+            onclick={() => (activeTab = 'scan')}
+            class="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
+            'scan'
+              ? 'bg-zinc-800 text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'}"
+          >
+            <QrCode class="h-4 w-4 text-indigo-400" />
+            <span>Scan QR Code</span>
+          </button>
 
-        <button
-          type="button"
-          onclick={() => (activeTab = 'manual')}
-          class="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
-          'manual'
-            ? 'bg-zinc-800 text-white shadow-sm'
-            : 'text-zinc-400 hover:text-zinc-200'}"
-        >
-          <Keyboard class="h-4 w-4 text-indigo-400" />
-          <span>Manual Entry</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onclick={() => (activeTab = 'manual')}
+            class="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
+            'manual'
+              ? 'bg-zinc-800 text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'}"
+          >
+            <Keyboard class="h-4 w-4 text-indigo-400" />
+            <span>Manual Entry</span>
+          </button>
+        </div>
+      {/if}
 
       <!-- Content Area -->
       <div class="flex-1 overflow-y-auto p-6">
-        <!-- SCANNER TAB -->
-        {#if activeTab === 'scan'}
+        <!-- MIGRATION PREVIEW TAB -->
+        {#if activeTab === 'migration'}
+          <div class="space-y-4">
+            <div
+              class="flex items-start gap-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4"
+            >
+              <ShieldCheck class="mt-0.5 h-5 w-5 shrink-0 text-indigo-400" />
+              <div class="text-xs">
+                <p class="font-semibold text-zinc-100">
+                  Discovered {migrationAccounts.length} 2FA Accounts
+                </p>
+                <p class="mt-0.5 text-zinc-400">
+                  Select the accounts you wish to import into your vault.
+                </p>
+              </div>
+            </div>
+
+            <!-- Group Selector -->
+            {#if vault.groups.length > 0}
+              <div>
+                <label for="migration-group" class="mb-1.5 block text-xs font-medium text-zinc-400">
+                  Import into Group
+                </label>
+                <select
+                  id="migration-group"
+                  bind:value={migrationGroupId}
+                  class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="">None (Uncategorized)</option>
+                  {#each vault.groups as group (group.id)}
+                    <option value={group.id}>{group.name}</option>
+                  {/each}
+                </select>
+              </div>
+            {/if}
+
+            <!-- Select all header -->
+            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+              <button
+                type="button"
+                onclick={toggleSelectAllMigration}
+                class="flex items-center gap-2 text-xs font-medium text-zinc-400 hover:text-white"
+              >
+                {#if selectedMigrationIndices.length === migrationAccounts.length}
+                  <CheckSquare class="h-4 w-4 text-indigo-400" />
+                  <span>Deselect All</span>
+                {:else}
+                  <Square class="h-4 w-4 text-zinc-500" />
+                  <span>Select All ({migrationAccounts.length})</span>
+                {/if}
+              </button>
+              <span class="text-xs text-zinc-500">
+                {selectedMigrationIndices.length} selected
+              </span>
+            </div>
+
+            <!-- Accounts List -->
+            <div class="max-h-60 space-y-2 overflow-y-auto pr-1">
+              {#each migrationAccounts as acc, i (acc.issuer + ':' + acc.name + ':' + i)}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <div
+                  onclick={() => toggleMigrationAccount(i)}
+                  class="flex cursor-pointer items-center justify-between rounded-xl border p-3 transition {selectedMigrationIndices.includes(
+                    i,
+                  )
+                    ? 'border-indigo-500/50 bg-indigo-500/10'
+                    : 'border-white/5 bg-zinc-950/60 opacity-60 hover:opacity-100'}"
+                  role="checkbox"
+                  tabindex="0"
+                  aria-checked={selectedMigrationIndices.includes(i)}
+                >
+                  <div class="flex items-center gap-3">
+                    {#if selectedMigrationIndices.includes(i)}
+                      <CheckSquare class="h-4 w-4 shrink-0 text-indigo-400" />
+                    {:else}
+                      <Square class="h-4 w-4 shrink-0 text-zinc-600" />
+                    {/if}
+                    <div>
+                      <p class="text-xs font-semibold text-white">{acc.issuer}</p>
+                      <p class="text-[11px] text-zinc-400">{acc.name}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5 text-[10px] text-zinc-400">
+                    <span class="rounded bg-zinc-800 px-1.5 py-0.5 uppercase">{acc.algorithm}</span>
+                    <span class="rounded bg-zinc-800 px-1.5 py-0.5">{acc.digits}D</span>
+                  </div>
+                </div>
+              {/each}
+            </div>
+
+            <!-- Migration Actions -->
+            <div class="flex items-center justify-end gap-2.5 pt-4">
+              <button
+                type="button"
+                onclick={() => {
+                  activeTab = 'scan';
+                  migrationAccounts = [];
+                }}
+                class="rounded-xl border border-white/10 bg-zinc-800/80 px-4 py-2.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onclick={handleConfirmMigration}
+                disabled={selectedMigrationIndices.length === 0 || isImportingMigration}
+                class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-600/25 transition hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50"
+              >
+                {#if isImportingMigration}
+                  <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                  <span>Importing...</span>
+                {:else}
+                  <span>Import {selectedMigrationIndices.length} Accounts</span>
+                {/if}
+              </button>
+            </div>
+          </div>
+
+          <!-- SCANNER TAB -->
+        {:else if activeTab === 'scan'}
           <div class="flex flex-col items-center">
             <!-- Video Viewport -->
             <div
@@ -351,15 +590,16 @@
             <!-- Secret Key -->
             <div>
               <label for="secret" class="mb-1.5 block text-xs font-medium text-zinc-400">
-                Secret Key (Base32)
+                Secret Key (Base32 or Google Migration URI)
               </label>
               <input
                 id="secret"
                 type="text"
                 bind:value={secret}
+                oninput={handleSecretChange}
                 placeholder="e.g. JBSWY3DPEHPK3PXP"
                 required
-                class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 font-mono text-sm tracking-wider text-white uppercase placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 font-mono text-sm tracking-wider text-white placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
