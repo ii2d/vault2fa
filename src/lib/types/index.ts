@@ -37,6 +37,24 @@ export interface VaultGroup {
   icon?: string;
 }
 
+export interface VaultTombstone {
+  id: string;
+  deletedAt: number;
+}
+
+export interface GistSyncConfig {
+  token: string;
+  gistId: string;
+  lastSyncedAt?: number;
+  autoSync: boolean;
+}
+
+export interface LocalFileSyncConfig {
+  fileName: string;
+  lastSyncedAt?: number;
+  autoSync: boolean;
+}
+
 /**
  * General application and vault user preferences.
  */
@@ -45,6 +63,8 @@ export interface VaultSettings {
   biometricUnlockEnabled: boolean;
   syncProvider: SyncProviderType;
   theme: 'dark' | 'light' | 'system';
+  gistSync?: GistSyncConfig;
+  localFileSync?: LocalFileSyncConfig;
 }
 
 export type SyncProviderType = 'none' | 'local-file' | 'github-gist' | 'air-gap' | 'webdav';
@@ -58,6 +78,7 @@ export interface VaultData {
   entries: OTPEntry[];
   groups: VaultGroup[];
   settings: VaultSettings;
+  tombstones?: VaultTombstone[];
 }
 
 /**

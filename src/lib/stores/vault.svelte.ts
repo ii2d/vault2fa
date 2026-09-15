@@ -198,6 +198,7 @@ class VaultStore {
       ...this.data!,
       updatedAt: now,
       entries: [...this.data!.entries, newEntry],
+      tombstones: (this.data!.tombstones ?? []).filter((t) => t.id !== newEntry.id),
     };
 
     await this.persistData(updatedData);
@@ -228,15 +229,20 @@ class VaultStore {
   }
 
   /**
-   * Deletes an entry by ID.
+   * Deletes an entry by ID and records a tombstone for sync conflict resolution.
    */
   async deleteEntry(id: string): Promise<void> {
     this.ensureUnlocked();
 
+    const now = Date.now();
+    const existingTombstones = (this.data!.tombstones ?? []).filter((t) => t.id !== id);
+    const updatedTombstones = [...existingTombstones, { id, deletedAt: now }];
+
     const updatedData: VaultData = {
       ...this.data!,
-      updatedAt: Date.now(),
+      updatedAt: now,
       entries: this.data!.entries.filter((e) => e.id !== id),
+      tombstones: updatedTombstones,
     };
 
     await this.persistData(updatedData);
