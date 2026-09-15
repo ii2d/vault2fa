@@ -44,7 +44,7 @@ export interface VaultTombstone {
 
 export interface GistSyncConfig {
   token: string;
-  gistId: string;
+  gistId?: string;
   lastSyncedAt?: number;
   autoSync: boolean;
 }

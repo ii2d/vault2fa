@@ -16,7 +16,15 @@
   import { vault } from '$lib/stores';
   import type { EncryptedVaultPayload } from '$lib/types';
 
-  let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
+  let {
+    isOpen,
+    onClose,
+    onMerged,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    onMerged?: (result: MergeResult) => void;
+  } = $props();
 
   let videoEl = $state<HTMLVideoElement | null>(null);
   let scannerControls = $state<IScannerControls | null>(null);
@@ -109,6 +117,7 @@
       const remoteData = await decryptVault(completedPayload, keyBytes);
       const res = await vault.mergeRemoteData(remoteData);
       mergeSummary = res;
+      onMerged?.(res);
     } catch (err: unknown) {
       mergeError =
         (err as Error).message ||

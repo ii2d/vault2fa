@@ -68,10 +68,10 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 
 ### Phase 3: Decentralized Sync & Backup
 
-- [ ] Native File System Access API integration (read/write local `.vault` file).
-- [ ] GitHub Gist sync driver (using scoped Personal Access Tokens).
-- [ ] Air-gapped vault transfer via animated frame-by-frame QR codes.
-- [ ] Entry-level tombstone & conflict-resolution logic for multi-device sync.
+- [x] Native File System Access API integration (read/write local `.vault` file).
+- [x] GitHub Gist sync driver (using scoped Personal Access Tokens).
+- [x] Air-gapped vault transfer via animated frame-by-frame QR codes.
+- [x] Entry-level tombstone & conflict-resolution logic for multi-device sync.
 
 ### Phase 4: Extended Cloud & UX Polish
 

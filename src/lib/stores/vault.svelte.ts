@@ -1,6 +1,15 @@
 import { decryptVault, deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
 import { db } from '$lib/core/storage';
-import { mergeVaultData, type MergeResult } from '$lib/core/sync';
+import {
+  mergeVaultData,
+  type MergeResult,
+  getLinkedHandle,
+  writeVaultToFileHandle,
+  readVaultFromFileHandle,
+  updateGistPayload,
+  syncVaultWithGist,
+  type GistSyncResult,
+} from '$lib/core/sync';
 import type {
   EncryptedVaultPayload,
   KeyDerivationParams,
@@ -11,6 +20,7 @@ import type {
 } from '$lib/types';
 
 export type VaultStatus = 'loading' | 'uninitialized' | 'locked' | 'unlocked';
+export type VaultSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   autoLockTimeoutMinutes: 5,
@@ -25,11 +35,14 @@ class VaultStore {
   activeGroupId = $state<string | null>(null);
   searchQuery = $state<string>('');
   autoLockSecondsLeft = $state<number>(300);
+  syncStatus = $state<VaultSyncStatus>('idle');
+  syncError = $state<string | null>(null);
 
   private masterKey: Uint8Array | null = null;
   private cachedPayload: EncryptedVaultPayload | null = null;
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private lastActivityTimestamp = Date.now();
+  private isAutoSyncing = false;
 
   /**
    * Filtered and sorted 2FA entries based on active group, search query, and pinned status.
@@ -425,6 +438,136 @@ class VaultStore {
     return this.cachedPayload!.kdf;
   }
 
+  /**
+   * Performs full two-way sync with GitHub Gist.
+   */
+  async syncWithGist(): Promise<GistSyncResult> {
+    this.ensureUnlocked();
+    const gistConfig = this.data!.settings.gistSync;
+    if (!gistConfig?.token) {
+      throw new Error('GitHub Personal Access Token is required for Gist sync.');
+    }
+
+    this.syncStatus = 'syncing';
+    this.syncError = null;
+
+    try {
+      const result = await syncVaultWithGist(
+        gistConfig.token,
+        gistConfig.gistId,
+        this.data!,
+        this.masterKey!,
+        this.cachedPayload!.kdf,
+      );
+
+      const now = Date.now();
+      const updatedSettings: VaultSettings = {
+        ...this.data!.settings,
+        syncProvider: 'github-gist',
+        gistSync: {
+          ...gistConfig,
+          gistId: result.gistId,
+          lastSyncedAt: now,
+        },
+      };
+
+      const finalData: VaultData = {
+        ...result.syncedVault,
+        settings: updatedSettings,
+        updatedAt: Math.max(result.syncedVault.updatedAt, now),
+      };
+
+      await this.persistData(finalData);
+      this.syncStatus = 'synced';
+      return result;
+    } catch (err: unknown) {
+      this.syncStatus = 'error';
+      this.syncError = (err as Error).message || 'Failed to sync with GitHub Gist.';
+      throw err;
+    }
+  }
+
+  /**
+   * Syncs and merges with a local .vault file handle.
+   */
+  async syncWithLocalFile(handle: FileSystemFileHandle): Promise<MergeResult> {
+    this.ensureUnlocked();
+    this.syncStatus = 'syncing';
+    this.syncError = null;
+
+    try {
+      const remotePayload = await readVaultFromFileHandle(handle);
+      const remoteData = await decryptVault(remotePayload, this.masterKey!);
+      const mergeResult = mergeVaultData(this.data!, remoteData);
+
+      const now = Date.now();
+      const updatedSettings: VaultSettings = {
+        ...mergeResult.merged.settings,
+        syncProvider: 'local-file',
+        localFileSync: {
+          fileName: handle.name,
+          autoSync: this.data!.settings.localFileSync?.autoSync ?? true,
+          lastSyncedAt: now,
+        },
+      };
+
+      const finalData: VaultData = {
+        ...mergeResult.merged,
+        settings: updatedSettings,
+        updatedAt: Math.max(mergeResult.merged.updatedAt, now),
+      };
+
+      await this.persistData(finalData);
+
+      if (this.cachedPayload) {
+        await writeVaultToFileHandle(handle, this.cachedPayload);
+      }
+
+      this.syncStatus = 'synced';
+      return mergeResult;
+    } catch (err: unknown) {
+      this.syncStatus = 'error';
+      this.syncError = (err as Error).message || 'Failed to sync with local file.';
+      throw err;
+    }
+  }
+
+  /**
+   * Directly exports current encrypted vault payload to a local file handle.
+   */
+  async saveToLocalFile(handle: FileSystemFileHandle): Promise<void> {
+    this.ensureUnlocked();
+    this.syncStatus = 'syncing';
+    this.syncError = null;
+
+    try {
+      if (!this.cachedPayload) {
+        this.cachedPayload = await encryptVault(
+          this.data!,
+          this.masterKey!,
+          this.cachedPayload!.kdf,
+        );
+      }
+      await writeVaultToFileHandle(handle, this.cachedPayload);
+
+      const now = Date.now();
+      await this.updateSettings({
+        syncProvider: 'local-file',
+        localFileSync: {
+          fileName: handle.name,
+          autoSync: this.data!.settings.localFileSync?.autoSync ?? true,
+          lastSyncedAt: now,
+        },
+      });
+
+      this.syncStatus = 'synced';
+    } catch (err: unknown) {
+      this.syncStatus = 'error';
+      this.syncError = (err as Error).message || 'Failed to save to local file.';
+      throw err;
+    }
+  }
+
   private ensureUnlocked(): void {
     if (this.status !== 'unlocked' || !this.data || !this.masterKey || !this.cachedPayload) {
       throw new Error('Vault is locked');
@@ -436,6 +579,47 @@ class VaultStore {
     await db.saveEncryptedVault(payload);
     this.cachedPayload = payload;
     this.data = updatedData;
+    await this.triggerAutoSync(payload, updatedData);
+  }
+
+  private async triggerAutoSync(payload: EncryptedVaultPayload, data: VaultData): Promise<void> {
+    if (this.isAutoSyncing) return;
+    this.isAutoSyncing = true;
+
+    try {
+      // 1. Local file auto-save if linked and autoSync is enabled
+      if (data.settings.localFileSync?.autoSync) {
+        const handle = await getLinkedHandle();
+        if (handle) {
+          try {
+            await writeVaultToFileHandle(handle, payload);
+            this.syncStatus = 'synced';
+          } catch (err: unknown) {
+            console.warn('Auto-save to local file failed:', err);
+          }
+        }
+      }
+
+      // 2. GitHub Gist auto-sync if configured and autoSync is enabled
+      if (
+        data.settings.gistSync?.autoSync &&
+        data.settings.gistSync?.token &&
+        data.settings.gistSync?.gistId
+      ) {
+        try {
+          await updateGistPayload(
+            data.settings.gistSync.token,
+            data.settings.gistSync.gistId,
+            payload,
+          );
+          this.syncStatus = 'synced';
+        } catch (err: unknown) {
+          console.warn('Auto-sync to GitHub Gist failed:', err);
+        }
+      }
+    } finally {
+      this.isAutoSyncing = false;
+    }
   }
 
   private startAutoLockTimer(): void {
