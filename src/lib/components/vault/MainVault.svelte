@@ -1,10 +1,12 @@
 <script lang="ts">
   import { Search } from '@lucide/svelte';
   import { vault } from '$lib/stores';
+  import type { OTPEntry } from '$lib/types';
   import VaultHeader from './VaultHeader.svelte';
   import GroupFilterBar from './GroupFilterBar.svelte';
   import TokenCard from './TokenCard.svelte';
   import EmptyVault from './EmptyVault.svelte';
+  import { EditAccountModal } from '$lib/components/modals';
 
   let {
     onOpenAddModal,
@@ -13,6 +15,8 @@
     onOpenAddModal: () => void;
     onOpenSettingsModal: () => void;
   } = $props();
+
+  let editingEntry = $state<OTPEntry | null>(null);
 
   const totalEntriesCount = $derived(vault.data?.entries.length ?? 0);
   const filteredEntries = $derived(vault.entries);
@@ -46,10 +50,16 @@
       {:else}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {#each filteredEntries as entry (entry.id)}
-            <TokenCard {entry} />
+            <TokenCard {entry} onEdit={(e) => (editingEntry = e)} />
           {/each}
         </div>
       {/if}
     {/if}
   </main>
+
+  <EditAccountModal
+    entry={editingEntry}
+    isOpen={editingEntry !== null}
+    onClose={() => (editingEntry = null)}
+  />
 </div>

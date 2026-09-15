@@ -1,11 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Pin, Trash2, Copy, Check, RefreshCw, Folder } from '@lucide/svelte';
+  import { Pin, Trash2, Copy, Check, RefreshCw, Folder, Pencil } from '@lucide/svelte';
   import { formatToken, generateToken, getPeriodRemaining } from '$lib/core/totp';
   import { vault } from '$lib/stores';
   import type { OTPEntry } from '$lib/types';
 
-  let { entry }: { entry: OTPEntry } = $props();
+  let {
+    entry,
+    onEdit,
+  }: {
+    entry: OTPEntry;
+    onEdit?: (entry: OTPEntry) => void;
+  } = $props();
 
   let currentTime = $state(Date.now());
   let copied = $state(false);
@@ -58,6 +64,11 @@
     await vault.updateEntry(entry.id, { pinned: !entry.pinned });
   }
 
+  function handleEdit(e: MouseEvent) {
+    e.stopPropagation();
+    onEdit?.(entry);
+  }
+
   async function handleIncrementCounter(e: MouseEvent) {
     e.stopPropagation();
     if (entry.type !== 'hotp') return;
@@ -90,7 +101,7 @@
 >
   <!-- Top: Issuer, Label, Badges & Actions -->
   <div class="flex items-start justify-between gap-3">
-    <div class="flex items-center gap-3">
+    <div class="flex min-w-0 flex-1 items-center gap-3">
       <!-- Icon / Monogram -->
       <div
         class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-zinc-800 to-zinc-700 font-bold text-zinc-100 shadow-inner"
@@ -101,19 +112,24 @@
       <!-- Names -->
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
-          <h2 class="truncate text-base font-semibold text-white">
+          <h2
+            class="truncate text-base font-semibold text-white"
+            title={entry.issuer || 'Unnamed Issuer'}
+          >
             {entry.issuer || 'Unnamed Issuer'}
           </h2>
           {#if entry.pinned}
             <Pin class="h-3 w-3 shrink-0 fill-indigo-400 text-indigo-400" />
           {/if}
         </div>
-        <p class="truncate text-xs text-zinc-400">{entry.label}</p>
+        <p class="truncate text-xs text-zinc-400" title={entry.label}>{entry.label}</p>
       </div>
     </div>
 
     <!-- Quick action buttons -->
-    <div class="flex items-center gap-1 opacity-60 transition group-hover:opacity-100">
+    <div
+      class="flex shrink-0 items-center gap-1 opacity-80 transition group-hover:opacity-100 sm:opacity-60"
+    >
       <button
         type="button"
         onclick={handleTogglePin}
@@ -122,6 +138,16 @@
         title={entry.pinned ? 'Unpin' : 'Pin to top'}
       >
         <Pin class="h-3.5 w-3.5 {entry.pinned ? 'fill-indigo-400 text-indigo-400' : ''}" />
+      </button>
+
+      <button
+        type="button"
+        onclick={handleEdit}
+        aria-label="Edit token"
+        class="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+        title="Edit account"
+      >
+        <Pencil class="h-3.5 w-3.5" />
       </button>
 
       {#if entry.type === 'hotp'}
