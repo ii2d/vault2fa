@@ -32,7 +32,7 @@
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
-  let activeTab = $state<'scan' | 'manual' | 'migration'>('scan');
+  let activeTab = $state<'scan' | 'manual' | 'migration'>('manual');
   let videoEl = $state<HTMLVideoElement | null>(null);
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let scannerControls = $state<IScannerControls | null>(null);
@@ -322,6 +322,7 @@
   }
 
   function resetForm() {
+    activeTab = 'manual';
     issuer = '';
     label = '';
     secret = '';
@@ -340,14 +341,16 @@
     stopScanner();
   }
 
+  let wasOpen = false;
   $effect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpen) {
+      activeTab = 'manual';
       groupId = getEffectiveGroupId(vault.activeGroupId) ?? '';
-      if (activeTab === 'scan') {
-        setTimeout(() => startScanner(), 100);
-      } else {
-        stopScanner();
-      }
+    }
+    wasOpen = isOpen;
+
+    if (isOpen && activeTab === 'scan') {
+      setTimeout(() => startScanner(), 100);
     } else {
       stopScanner();
     }
@@ -400,18 +403,6 @@
         <div class="flex border-b border-white/10 bg-zinc-950/40 p-2">
           <button
             type="button"
-            onclick={() => (activeTab = 'scan')}
-            class="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
-            'scan'
-              ? 'bg-zinc-800 text-white shadow-sm'
-              : 'text-zinc-400 hover:text-zinc-200'}"
-          >
-            <QrCode class="h-4 w-4 text-indigo-400" />
-            <span>Scan QR Code</span>
-          </button>
-
-          <button
-            type="button"
             onclick={() => (activeTab = 'manual')}
             class="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
             'manual'
@@ -420,6 +411,18 @@
           >
             <Keyboard class="h-4 w-4 text-indigo-400" />
             <span>Manual Entry</span>
+          </button>
+
+          <button
+            type="button"
+            onclick={() => (activeTab = 'scan')}
+            class="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
+            'scan'
+              ? 'bg-zinc-800 text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'}"
+          >
+            <QrCode class="h-4 w-4 text-indigo-400" />
+            <span>Scan QR Code</span>
           </button>
         </div>
       {/if}
