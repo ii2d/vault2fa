@@ -4,6 +4,9 @@
   import { vault } from '$lib/stores';
   import { SetupVault, UnlockVault } from '$lib/components/auth';
   import { MainVault } from '$lib/components/vault';
+  import { AddAccountModal } from '$lib/components/modals';
+
+  let isAddModalOpen = $state(false);
 
   onMount(async () => {
     await vault.checkInitialState();
@@ -43,6 +46,7 @@
   {:else if vault.status === 'locked'}
     <UnlockVault />
   {:else}
-    <MainVault onOpenAddModal={() => {}} />
+    <MainVault onOpenAddModal={() => (isAddModalOpen = true)} />
+    <AddAccountModal isOpen={isAddModalOpen} onClose={() => (isAddModalOpen = false)} />
   {/if}
 </div>
