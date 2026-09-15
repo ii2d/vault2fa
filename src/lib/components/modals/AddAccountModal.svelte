@@ -23,6 +23,8 @@
     isGoogleMigrationUri,
     parseGoogleMigrationUri,
     convertMigrationAccountsToEntries,
+    isPlainTextOtpList,
+    parsePlainTextOtpList,
     type MigrationAccount,
   } from '$lib/core/totp';
   import { vault } from '$lib/stores';
@@ -38,6 +40,7 @@
   let isScanning = $state(false);
 
   // Migration State
+  let migrationSourceTitle = $state('Import Google Authenticator');
   let migrationAccounts = $state<MigrationAccount[]>([]);
   let selectedMigrationIndices = $state<number[]>([]);
   let migrationGroupId = $state<string>('');
@@ -104,10 +107,33 @@
         migrationAccounts = parsed;
         selectedMigrationIndices = parsed.map((_, i) => i);
         migrationGroupId = vault.activeGroupId ?? '';
+        migrationSourceTitle = 'Import Google Authenticator';
         activeTab = 'migration';
         return;
       } catch (err: unknown) {
         scannerError = (err as Error).message || 'Failed to parse Google Authenticator QR payload.';
+        return;
+      }
+    }
+
+    // Check if scanned/pasted text is a plain text OTP URI list
+    if (isPlainTextOtpList(trimmed)) {
+      const { entries } = parsePlainTextOtpList(trimmed);
+      if (entries.length > 1) {
+        migrationAccounts = entries.map((e) => ({
+          name: e.label,
+          issuer: e.issuer,
+          secret: e.secret,
+          type: e.type,
+          algorithm: e.algorithm,
+          digits: e.digits,
+          period: e.period,
+          counter: e.counter,
+        }));
+        selectedMigrationIndices = migrationAccounts.map((_, i) => i);
+        migrationGroupId = vault.activeGroupId ?? '';
+        migrationSourceTitle = `Importing ${entries.length} Accounts from Text`;
+        activeTab = 'migration';
         return;
       }
     }
@@ -131,11 +157,23 @@
     }
   }
 
-  // Handle image file upload fallback
+  // Handle image file or plain text file upload fallback
   async function handleFileUpload(e: Event) {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file) return;
+
+    // Check if text file (.txt)
+    if (file.name.endsWith('.txt') || file.type === 'text/plain') {
+      try {
+        const text = await file.text();
+        handleScannedText(text);
+        return;
+      } catch {
+        scannerError = 'Failed to read plain text file.';
+        return;
+      }
+    }
 
     try {
       const { BrowserQRCodeReader } = await import('@zxing/browser');
@@ -151,7 +189,7 @@
     }
   }
 
-  // Check if manual secret is a migration URL
+  // Check if manual secret is a migration URL or plain text URI list
   function handleSecretChange() {
     if (isGoogleMigrationUri(secret)) {
       try {
@@ -160,11 +198,31 @@
           migrationAccounts = parsed;
           selectedMigrationIndices = parsed.map((_, i) => i);
           migrationGroupId = groupId || (vault.activeGroupId ?? '');
+          migrationSourceTitle = 'Import Google Authenticator';
           activeTab = 'migration';
           secret = '';
         }
       } catch {
         // keep typing
+      }
+    } else if (isPlainTextOtpList(secret)) {
+      const { entries } = parsePlainTextOtpList(secret);
+      if (entries.length > 1 || (entries.length === 1 && secret.includes('\n'))) {
+        migrationAccounts = entries.map((e) => ({
+          name: e.label,
+          issuer: e.issuer,
+          secret: e.secret,
+          type: e.type,
+          algorithm: e.algorithm,
+          digits: e.digits,
+          period: e.period,
+          counter: e.counter,
+        }));
+        selectedMigrationIndices = migrationAccounts.map((_, i) => i);
+        migrationGroupId = groupId || (vault.activeGroupId ?? '');
+        migrationSourceTitle = `Importing ${entries.length} Accounts from Text`;
+        activeTab = 'migration';
+        secret = '';
       }
     }
   }
@@ -315,7 +373,7 @@
               <Layers class="h-4 w-4" />
             </div>
             <h2 id="add-account-title" class="text-base font-bold text-white">
-              Import Google Authenticator
+              {migrationSourceTitle}
             </h2>
           {:else}
             <h2 id="add-account-title" class="text-base font-bold text-white">Add 2FA Account</h2>

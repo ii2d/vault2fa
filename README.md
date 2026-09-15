@@ -62,6 +62,7 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 
 - [x] Google Authenticator migration payload parser (Protobuf deserialization).
 - [x] Aegis Authenticator JSON import/export (encrypted & unencrypted).
+- [x] Plain text / multiline `otpauth://` URI list batch import & export (.txt).
 - [x] WebAuthn / Passkey integration for biometric vault unlock (Touch ID / Face ID / Windows Hello).
 - [x] PWA Service Worker caching for seamless offline usage (`vite-plugin-pwa`).
 

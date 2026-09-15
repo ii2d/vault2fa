@@ -12,6 +12,7 @@
     Loader2,
     Info,
     FileCode,
+    FileText,
   } from '@lucide/svelte';
   import { vault } from '$lib/stores';
   import {
@@ -25,6 +26,7 @@
     exportEncryptedBackup,
     exportDecryptedBackup,
     exportToAegisJson,
+    exportPlainTextBackup,
     detectBackupFormat,
     parseUnencryptedBackup,
   } from '$lib/core/backup';
@@ -170,6 +172,15 @@
     const dateStr = new Date().toISOString().slice(0, 10);
     downloadTextFile(`aegis-export-${dateStr}.json`, content);
     backupMessage = { type: 'success', text: 'Aegis JSON backup downloaded successfully.' };
+  }
+
+  function handleExportPlainText() {
+    if (!vault.data) return;
+
+    const content = exportPlainTextBackup(vault.data);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    downloadTextFile(`vault2fa-uris-${dateStr}.txt`, content, 'text/plain');
+    backupMessage = { type: 'success', text: 'Plain text URI list downloaded successfully.' };
   }
 
   function handleExportDecryptedConfirmed() {
@@ -484,6 +495,26 @@
               </button>
             </div>
 
+            <!-- Plain Text URIs -->
+            <div
+              class="flex items-center justify-between rounded-2xl border border-white/5 bg-zinc-950/60 p-4"
+            >
+              <div>
+                <h3 class="text-xs font-bold text-white">Plain Text URIs (.txt)</h3>
+                <p class="text-[11px] text-zinc-400">
+                  Newline-delimited otpauth:// list. Convenient for bulk copy-paste.
+                </p>
+              </div>
+              <button
+                type="button"
+                onclick={handleExportPlainText}
+                class="flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 hover:text-white"
+              >
+                <FileText class="h-3.5 w-3.5 text-indigo-400" />
+                <span>Export</span>
+              </button>
+            </div>
+
             <!-- Import File -->
             <div
               class="flex items-center justify-between rounded-2xl border border-white/5 bg-zinc-950/60 p-4"
@@ -491,13 +522,13 @@
               <div>
                 <h3 class="text-xs font-bold text-white">Import Backup File</h3>
                 <p class="text-[11px] text-zinc-400">
-                  Restore from Aegis JSON or native unencrypted backup.
+                  Restore from Aegis JSON, native backup, or plain text URI list (.txt).
                 </p>
               </div>
               <input
                 bind:this={fileInputEl}
                 type="file"
-                accept=".json"
+                accept=".json,.txt"
                 onchange={handleImportFile}
                 class="hidden"
               />

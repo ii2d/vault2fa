@@ -3,10 +3,16 @@
  * Manages encrypted and unencrypted backups, format detection, and browser downloads.
  */
 
-import type { EncryptedVaultPayload, VaultData } from '$lib/types';
+import type { EncryptedVaultPayload, OTPEntry, VaultData, VaultGroup } from '$lib/types';
 import { isAegisJson, parseAegisJson } from './aegis';
+import {
+  isPlainTextOtpList,
+  parsePlainTextOtpList,
+  exportToPlainTextUris,
+} from '$lib/core/totp/plain-text';
 
-export type BackupFormat = 'vault2fa-encrypted' | 'vault2fa-decrypted' | 'aegis' | 'unknown';
+export type BackupFormat =
+  'vault2fa-encrypted' | 'vault2fa-decrypted' | 'aegis' | 'plain-text-uris' | 'unknown';
 
 /**
  * Triggers a browser file download with the specified text content.
@@ -55,39 +61,56 @@ export function exportDecryptedBackup(vault: VaultData): string {
 }
 
 /**
- * Detects the format of a backup file string.
+ * Generates an unencrypted plain-text URI list ready for download.
  */
-export function detectBackupFormat(content: string): BackupFormat {
-  try {
-    const data = JSON.parse(content);
-    if (!data || typeof data !== 'object') return 'unknown';
-
-    if (data.format === 'vault2fa-v1' && typeof data.ciphertext === 'string') {
-      return 'vault2fa-encrypted';
-    }
-
-    if (data.vault?.entries && Array.isArray(data.vault.entries)) {
-      return 'vault2fa-decrypted';
-    }
-
-    if (Array.isArray(data.entries) && Array.isArray(data.groups)) {
-      return 'vault2fa-decrypted';
-    }
-
-    if (isAegisJson(content)) {
-      return 'aegis';
-    }
-
-    return 'unknown';
-  } catch {
-    return 'unknown';
-  }
+export function exportPlainTextBackup(vault: VaultData): string {
+  return exportToPlainTextUris(vault);
 }
 
 /**
- * Parses unencrypted backup content (either native vault2fa or Aegis).
+ * Detects the format of a backup file string.
  */
-export function parseUnencryptedBackup(content: string) {
+export function detectBackupFormat(content: string): BackupFormat {
+  if (typeof content !== 'string') return 'unknown';
+
+  // Check JSON-based formats first
+  try {
+    const data = JSON.parse(content);
+    if (data && typeof data === 'object') {
+      if (data.format === 'vault2fa-v1' && typeof data.ciphertext === 'string') {
+        return 'vault2fa-encrypted';
+      }
+
+      if (data.vault?.entries && Array.isArray(data.vault.entries)) {
+        return 'vault2fa-decrypted';
+      }
+
+      if (Array.isArray(data.entries) && Array.isArray(data.groups)) {
+        return 'vault2fa-decrypted';
+      }
+
+      if (isAegisJson(content)) {
+        return 'aegis';
+      }
+    }
+  } catch {
+    // Not valid JSON, check plain text URI list
+  }
+
+  if (isPlainTextOtpList(content)) {
+    return 'plain-text-uris';
+  }
+
+  return 'unknown';
+}
+
+/**
+ * Parses unencrypted backup content (either native vault2fa, Aegis, or plain text URI list).
+ */
+export function parseUnencryptedBackup(content: string): {
+  entries: OTPEntry[];
+  groups: VaultGroup[];
+} {
   const format = detectBackupFormat(content);
 
   if (format === 'aegis') {
@@ -100,6 +123,21 @@ export function parseUnencryptedBackup(content: string) {
     return {
       entries: vault.entries || [],
       groups: vault.groups || [],
+    };
+  }
+
+  if (format === 'plain-text-uris') {
+    const { entries } = parsePlainTextOtpList(content);
+    const now = Date.now();
+    const fullEntries: OTPEntry[] = entries.map((item) => ({
+      ...item,
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+    }));
+    return {
+      entries: fullEntries,
+      groups: [],
     };
   }
 

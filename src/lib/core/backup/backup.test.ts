@@ -170,10 +170,13 @@ describe('Native Backup & Restore', () => {
     expect(detectBackupFormat('not json')).toBe('unknown');
   });
 
-  it('parses unencrypted vault2fa backup', () => {
-    const backup = exportDecryptedBackup(mockVault);
-    const parsed = parseUnencryptedBackup(backup);
-    expect(parsed.entries).toHaveLength(1);
-    expect(parsed.entries[0].issuer).toBe('GitLab');
+  it('detects and parses plain text URI lists', () => {
+    const uriList = `otpauth://totp/GitHub:user?secret=JBSWY3DPEHPK3PXP\notpauth://totp/AWS:admin?secret=HXDMVJECJJWSRB3H`;
+    expect(detectBackupFormat(uriList)).toBe('plain-text-uris');
+
+    const parsed = parseUnencryptedBackup(uriList);
+    expect(parsed.entries).toHaveLength(2);
+    expect(parsed.entries[0].issuer).toBe('GitHub');
+    expect(parsed.entries[1].issuer).toBe('AWS');
   });
 });
