@@ -16,7 +16,17 @@ export interface ParsedPlainTextResult {
  */
 export function isPlainTextOtpList(content: string): boolean {
   if (typeof content !== 'string') return false;
-  return content.split(/\r?\n/).some((line) => line.trim().startsWith('otpauth://'));
+  const sanitized = content.replace(/^\uFEFF/, '');
+  return sanitized.split(/\r?\n/).some((line) => {
+    let trimmed = line.trim();
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+      trimmed = trimmed.slice(1, -1).trim();
+    }
+    return trimmed.startsWith('otpauth://');
+  });
 }
 
 /**
@@ -24,17 +34,26 @@ export function isPlainTextOtpList(content: string): boolean {
  * Ignores empty lines and comments starting with # or //.
  */
 export function parsePlainTextOtpList(content: string): ParsedPlainTextResult {
-  const lines = content.split(/\r?\n/);
+  const sanitized = content.replace(/^\uFEFF/, '');
+  const lines = sanitized.split(/\r?\n/);
   const entries: Array<Omit<OTPEntry, 'id' | 'createdAt' | 'updatedAt'>> = [];
   const errors: Array<{ line: number; text: string; error: string }> = [];
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
-    const trimmed = rawLine.trim();
+    let trimmed = rawLine.trim();
 
     // Skip empty lines and comments
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) {
       continue;
+    }
+
+    // Strip surrounding quotes if present (e.g., from CSV or text export)
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+      trimmed = trimmed.slice(1, -1).trim();
     }
 
     if (!trimmed.startsWith('otpauth://')) {

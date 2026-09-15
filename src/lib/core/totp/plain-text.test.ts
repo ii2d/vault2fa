@@ -121,4 +121,17 @@ otpauth://totp/AWS:admin?secret=HXDMVJECJJWSRB3H
     expect(entries[1].algorithm).toBe('SHA256');
     expect(entries[1].digits).toBe(8);
   });
+
+  it('handles UTF-8 BOM and surrounding quotes', () => {
+    const textWithBomAndQuotes =
+      '\uFEFF"otpauth://totp/Quoted:user?secret=JBSWY3DPEHPK3PXP"\n\'otpauth://totp/SingleQuoted:user?secret=HXDMVJECJJWSRB3H\'';
+
+    expect(isPlainTextOtpList(textWithBomAndQuotes)).toBe(true);
+
+    const { entries, errors } = parsePlainTextOtpList(textWithBomAndQuotes);
+    expect(errors).toHaveLength(0);
+    expect(entries).toHaveLength(2);
+    expect(entries[0].issuer).toBe('Quoted');
+    expect(entries[1].issuer).toBe('SingleQuoted');
+  });
 });

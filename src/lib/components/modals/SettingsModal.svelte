@@ -30,6 +30,7 @@
     detectBackupFormat,
     parseUnencryptedBackup,
   } from '$lib/core/backup';
+  import { isPlainTextOtpList } from '$lib/core/totp';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
@@ -203,15 +204,36 @@
 
     try {
       const content = await file.text();
-      const format = detectBackupFormat(content);
+      let format = detectBackupFormat(content);
 
-      if (format === 'aegis' || format === 'vault2fa-decrypted') {
+      // Fallback for .txt files
+      if (format === 'unknown' && file.name.toLowerCase().endsWith('.txt')) {
+        if (isPlainTextOtpList(content)) {
+          format = 'plain-text-uris';
+        }
+      }
+
+      if (format === 'aegis' || format === 'vault2fa-decrypted' || format === 'plain-text-uris') {
         const parsed = parseUnencryptedBackup(content);
-        const { addedCount } = await vault.importEntriesAndGroups(parsed.entries, parsed.groups);
-        backupMessage = {
-          type: 'success',
-          text: `Successfully imported ${addedCount} accounts into your vault!`,
-        };
+        if (parsed.entries.length === 0) {
+          backupMessage = {
+            type: 'error',
+            text: 'No valid OTP accounts were found in this file.',
+          };
+        } else {
+          const { addedCount } = await vault.importEntriesAndGroups(parsed.entries, parsed.groups);
+          if (addedCount === 0) {
+            backupMessage = {
+              type: 'success',
+              text: `All ${parsed.entries.length} accounts found in this file are already in your vault.`,
+            };
+          } else {
+            backupMessage = {
+              type: 'success',
+              text: `Successfully imported ${addedCount} accounts into your vault!`,
+            };
+          }
+        }
       } else if (format === 'vault2fa-encrypted') {
         backupMessage = {
           type: 'error',
@@ -220,7 +242,7 @@
       } else {
         backupMessage = {
           type: 'error',
-          text: 'Unrecognized file format. Expected Aegis JSON or vault2fa backup.',
+          text: 'Unrecognized file format. Expected Aegis JSON, vault2fa backup, or plain text URI list (.txt).',
         };
       }
     } catch (err: unknown) {
