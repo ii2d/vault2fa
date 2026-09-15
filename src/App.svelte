@@ -1,7 +1,50 @@
 <script lang="ts">
-  // Root application shell
+  import { onMount } from 'svelte';
+  import { Loader2, Shield } from '@lucide/svelte';
+  import { vault } from '$lib/stores';
+  import { SetupVault, UnlockVault } from '$lib/components/auth';
+
+  onMount(async () => {
+    await vault.checkInitialState();
+  });
+
+  function handleUserActivity() {
+    if (vault.isUnlocked) {
+      vault.recordActivity();
+    }
+  }
 </script>
 
-<main>
-  <h1>vault2fa</h1>
-</main>
+<svelte:window
+  onmousemove={handleUserActivity}
+  onkeydown={handleUserActivity}
+  onclick={handleUserActivity}
+  ontouchstart={handleUserActivity}
+/>
+
+<div
+  class="min-h-screen bg-zinc-950 font-sans text-zinc-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200"
+>
+  {#if vault.status === 'loading'}
+    <div class="flex min-h-screen flex-col items-center justify-center gap-4">
+      <div
+        class="flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-500/30 bg-indigo-600/20 text-indigo-400 shadow-xl shadow-indigo-500/10"
+      >
+        <Shield class="h-7 w-7 animate-pulse" />
+      </div>
+      <div class="flex items-center gap-2 text-sm text-zinc-400">
+        <Loader2 class="h-4 w-4 animate-spin" />
+        <span>Loading vault2fa...</span>
+      </div>
+    </div>
+  {:else if vault.status === 'uninitialized'}
+    <SetupVault />
+  {:else if vault.status === 'locked'}
+    <UnlockVault />
+  {:else}
+    <!-- Main vault view will be connected in Step 5 -->
+    <div class="p-8 text-center">
+      <p class="text-emerald-400">Vault unlocked successfully!</p>
+    </div>
+  {/if}
+</div>
