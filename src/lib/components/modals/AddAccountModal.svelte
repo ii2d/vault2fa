@@ -46,6 +46,11 @@
   let migrationGroupId = $state<string>('');
   let isImportingMigration = $state(false);
 
+  function getEffectiveGroupId(id: string | null | undefined): string | undefined {
+    if (!id || id === 'uncategorized') return undefined;
+    return id;
+  }
+
   // Manual Form State
   let issuer = $state('');
   let label = $state('');
@@ -106,7 +111,7 @@
         }
         migrationAccounts = parsed;
         selectedMigrationIndices = parsed.map((_, i) => i);
-        migrationGroupId = vault.activeGroupId ?? '';
+        migrationGroupId = getEffectiveGroupId(vault.activeGroupId) ?? '';
         migrationSourceTitle = 'Import Google Authenticator';
         activeTab = 'migration';
         return;
@@ -131,7 +136,7 @@
           counter: e.counter,
         }));
         selectedMigrationIndices = migrationAccounts.map((_, i) => i);
-        migrationGroupId = vault.activeGroupId ?? '';
+        migrationGroupId = getEffectiveGroupId(vault.activeGroupId) ?? '';
         migrationSourceTitle = `Importing ${entries.length} Accounts from Text`;
         activeTab = 'migration';
         return;
@@ -149,7 +154,7 @@
         digits: parsed.digits,
         period: parsed.period,
         counter: parsed.counter,
-        groupId: vault.activeGroupId ?? undefined,
+        groupId: getEffectiveGroupId(vault.activeGroupId),
       });
       onClose();
     } catch (err: unknown) {
@@ -197,7 +202,7 @@
         if (parsed.length > 0) {
           migrationAccounts = parsed;
           selectedMigrationIndices = parsed.map((_, i) => i);
-          migrationGroupId = groupId || (vault.activeGroupId ?? '');
+          migrationGroupId = groupId || (getEffectiveGroupId(vault.activeGroupId) ?? '');
           migrationSourceTitle = 'Import Google Authenticator';
           activeTab = 'migration';
           secret = '';
@@ -219,7 +224,7 @@
           counter: e.counter,
         }));
         selectedMigrationIndices = migrationAccounts.map((_, i) => i);
-        migrationGroupId = groupId || (vault.activeGroupId ?? '');
+        migrationGroupId = groupId || (getEffectiveGroupId(vault.activeGroupId) ?? '');
         migrationSourceTitle = `Importing ${entries.length} Accounts from Text`;
         activeTab = 'migration';
         secret = '';
@@ -320,7 +325,7 @@
     issuer = '';
     label = '';
     secret = '';
-    groupId = '';
+    groupId = getEffectiveGroupId(vault.activeGroupId) ?? '';
     type = 'totp';
     algorithm = 'SHA1';
     digits = 6;
@@ -337,6 +342,7 @@
 
   $effect(() => {
     if (isOpen) {
+      groupId = getEffectiveGroupId(vault.activeGroupId) ?? '';
       if (activeTab === 'scan') {
         setTimeout(() => startScanner(), 100);
       } else {

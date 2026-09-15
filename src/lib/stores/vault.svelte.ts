@@ -37,7 +37,9 @@ class VaultStore {
     let list = [...this.data.entries];
 
     // Filter by group
-    if (this.activeGroupId) {
+    if (this.activeGroupId === 'uncategorized') {
+      list = list.filter((e) => !e.groupId);
+    } else if (this.activeGroupId) {
       list = list.filter((e) => e.groupId === this.activeGroupId);
     }
 
