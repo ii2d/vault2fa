@@ -74,12 +74,13 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 - [x] Gist configuration QR pairing and sharing.
 - [x] Entry-level tombstone & conflict-resolution logic for multi-device sync.
 
-### Phase 4: Extended Cloud & UX Polish
+### Phase 4: Emergency Recovery Kit & UX Polish
 
-- [ ] WebDAV storage driver (for Nextcloud, ownCloud, and NAS users).
-- [ ] Dropbox integration via PKCE OAuth flow (App Folder sandbox).
-- [ ] Emergency Recovery Kit generation (downloadable/printable PDF).
-- [ ] Encrypted multi-folder categorization and tags.
+- [x] Emergency Recovery Kit generation (Printable / PDF disaster recovery document with QR & handwritten passphrase area).
+- [x] Encrypted multi-folder categorization, pinned tokens, and tag search filters.
+- [x] Power-user keyboard shortcuts (`⌘K` / `/` search focus, `⌘N` add token, `Esc` dismiss).
+- [x] Subtle mobile haptic feedback on TOTP token copy (`navigator.vibrate`).
+- [x] Decentralized zero-backend sync architecture via Native File System Access & GitHub Gist E2EE.
 
 ---
 

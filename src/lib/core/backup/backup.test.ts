@@ -5,7 +5,9 @@ import {
   exportEncryptedBackup,
   exportDecryptedBackup,
   parseUnencryptedBackup,
+  parseEncryptedBackup,
 } from './backup';
+
 import type { VaultData, EncryptedVaultPayload } from '$lib/types';
 
 describe('Aegis Interoperability', () => {
@@ -178,5 +180,17 @@ describe('Native Backup & Restore', () => {
     expect(parsed.entries).toHaveLength(2);
     expect(parsed.entries[0].issuer).toBe('GitHub');
     expect(parsed.entries[1].issuer).toBe('AWS');
+  });
+
+  it('parses valid encrypted backup correctly', () => {
+    const backup = exportEncryptedBackup(mockPayload);
+    const parsed = parseEncryptedBackup(backup);
+    expect(parsed.format).toBe('vault2fa-v1');
+    expect(parsed.ciphertext).toBe(mockPayload.ciphertext);
+    expect(parsed.kdf.algorithm).toBe('Argon2id');
+  });
+
+  it('throws on invalid encrypted backup', () => {
+    expect(() => parseEncryptedBackup('{"invalid": true}')).toThrow();
   });
 });

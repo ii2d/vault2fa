@@ -143,3 +143,21 @@ export function parseUnencryptedBackup(content: string): {
 
   throw new Error('Unsupported unencrypted backup format.');
 }
+
+/**
+ * Parses and validates an encrypted vault2fa backup payload.
+ */
+export function parseEncryptedBackup(content: string): EncryptedVaultPayload {
+  const format = detectBackupFormat(content);
+  if (format !== 'vault2fa-encrypted') {
+    throw new Error('File is not a valid vault2fa encrypted backup.');
+  }
+
+  const data = JSON.parse(content);
+  return {
+    format: data.format,
+    kdf: data.kdf,
+    encryption: data.encryption,
+    ciphertext: data.ciphertext,
+  };
+}

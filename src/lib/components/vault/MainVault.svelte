@@ -22,7 +22,7 @@
   const filteredEntries = $derived(vault.entries);
 </script>
 
-<div class="flex min-h-screen flex-col bg-zinc-950">
+<div class="flex min-h-screen flex-col bg-zinc-950 print:hidden">
   <!-- Sticky Header -->
   <VaultHeader {onOpenAddModal} {onOpenSettingsModal} />
 

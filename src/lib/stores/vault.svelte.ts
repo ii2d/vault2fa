@@ -132,6 +132,30 @@ class VaultStore {
   }
 
   /**
+   * Initializes a new vault with pre-existing data (e.g. from an unencrypted backup file).
+   */
+  async initVaultWithData(vaultData: VaultData, masterPassword: string): Promise<void> {
+    const kdfParams = generateKdfParams();
+    const { keyBytes } = await deriveMasterKey(masterPassword, kdfParams);
+
+    const dataToSave: VaultData = {
+      ...vaultData,
+      version: 1,
+      updatedAt: Date.now(),
+      settings: vaultData.settings || { ...DEFAULT_VAULT_SETTINGS },
+    };
+
+    const payload = await encryptVault(dataToSave, keyBytes, kdfParams);
+    await db.saveEncryptedVault(payload);
+
+    this.cachedPayload = payload;
+    this.masterKey = keyBytes;
+    this.data = dataToSave;
+    this.status = 'unlocked';
+    this.startAutoLockTimer();
+  }
+
+  /**
    * Unlocks an existing vault using the master password.
    */
   async unlockVault(masterPassword: string): Promise<void> {
@@ -397,6 +421,28 @@ class VaultStore {
   }
 
   /**
+   * Decrypts an encrypted backup with its master password and imports/merges into the current active vault.
+   */
+  async importFromEncryptedPayload(
+    payload: EncryptedVaultPayload,
+    masterPassword: string,
+  ): Promise<{ addedCount: number; totalFound: number }> {
+    this.ensureUnlocked();
+    if (payload.format !== 'vault2fa-v1' || !payload.ciphertext) {
+      throw new Error('Invalid encrypted vault payload format.');
+    }
+
+    const { keyBytes } = await deriveMasterKey(masterPassword, payload.kdf);
+    const decryptedData = await decryptVault(payload, keyBytes);
+
+    const { addedCount } = await this.importEntriesAndGroups(
+      decryptedData.entries,
+      decryptedData.groups,
+    );
+    return { addedCount, totalFound: decryptedData.entries.length };
+  }
+
+  /**
    * Completely resets the vault and database.
    */
   async resetAll(): Promise<void> {
@@ -450,14 +496,40 @@ class VaultStore {
       throw new Error('Invalid encrypted vault payload format.');
     }
 
-    const { keyBytes } = await deriveMasterKey(masterPassword, payload.kdf);
-    const decryptedData = await decryptVault(payload, keyBytes);
+    const cleanPayload: EncryptedVaultPayload = {
+      format: payload.format,
+      kdf: {
+        algorithm: payload.kdf.algorithm,
+        iterations: Number(payload.kdf.iterations),
+        memoryKiB: Number(payload.kdf.memoryKiB),
+        parallelism: Number(payload.kdf.parallelism),
+        salt: String(payload.kdf.salt),
+      },
+      encryption: {
+        algorithm: payload.encryption.algorithm,
+        iv: String(payload.encryption.iv),
+        tagLength: Number(payload.encryption.tagLength || 128),
+      },
+      ciphertext: String(payload.ciphertext),
+    };
 
-    await db.saveEncryptedVault(payload);
+    const { keyBytes } = await deriveMasterKey(masterPassword, cleanPayload.kdf);
+    const decryptedData = await decryptVault(cleanPayload, keyBytes);
 
-    this.cachedPayload = payload;
+    const normalizedData: VaultData = {
+      version: decryptedData.version || 1,
+      updatedAt: decryptedData.updatedAt || Date.now(),
+      entries: decryptedData.entries || [],
+      groups: decryptedData.groups || [],
+      settings: { ...DEFAULT_VAULT_SETTINGS, ...(decryptedData.settings || {}) },
+      tombstones: decryptedData.tombstones || [],
+    };
+
+    await db.saveEncryptedVault(cleanPayload);
+
+    this.cachedPayload = cleanPayload;
     this.masterKey = keyBytes;
-    this.data = decryptedData;
+    this.data = normalizedData;
     this.status = 'unlocked';
     this.startAutoLockTimer();
   }

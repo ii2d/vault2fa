@@ -23,6 +23,8 @@
     Unlink,
     RefreshCw,
     Camera,
+    ShieldAlert,
+    Printer,
   } from '@lucide/svelte';
   import { vault } from '$lib/stores';
   import {
@@ -39,9 +41,11 @@
     exportPlainTextBackup,
     detectBackupFormat,
     parseUnencryptedBackup,
+    parseEncryptedBackup,
   } from '$lib/core/backup';
   import { isPlainTextOtpList } from '$lib/core/totp';
   import { SyncConfigShareModal, SyncConfigScanModal } from '$lib/components/sync';
+  import RecoveryKitModal from './RecoveryKitModal.svelte';
   import {
     isFileSystemAccessSupported,
     pickLocalVaultFile,
@@ -50,7 +54,7 @@
     uncheckLinkedHandle,
     validateGitHubToken,
   } from '$lib/core/sync';
-  import type { GistSyncConfig } from '$lib/types';
+  import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
@@ -75,6 +79,15 @@
   let backupMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
   let showDecryptedWarning = $state(false);
 
+  // Encrypted Backup Password Prompt Modal State
+  let pendingEncryptedPayload = $state.raw<EncryptedVaultPayload | null>(null);
+  let backupPassword = $state('');
+
+  let showBackupPasswordModal = $state(false);
+  let isDecryptingBackup = $state(false);
+  let backupPasswordError = $state('');
+  let showBackupPassword = $state(false);
+
   // Sync State
   let localFileSupported = $state(false);
   let localHandle = $state<FileSystemFileHandle | null>(null);
@@ -90,6 +103,7 @@
 
   let isShareConfigOpen = $state(false);
   let isScanConfigOpen = $state(false);
+  let isRecoveryKitOpen = $state(false);
 
   // Check biometrics and sync status when modal opens
   async function checkBiometrics() {
@@ -285,10 +299,11 @@
           }
         }
       } else if (format === 'vault2fa-encrypted') {
-        backupMessage = {
-          type: 'error',
-          text: 'To restore a full encrypted backup file, please lock and reset the vault from onboarding.',
-        };
+        const payload = parseEncryptedBackup(content);
+        pendingEncryptedPayload = payload;
+        backupPassword = '';
+        backupPasswordError = '';
+        showBackupPasswordModal = true;
       } else {
         backupMessage = {
           type: 'error',
@@ -304,6 +319,46 @@
       isImporting = false;
       if (fileInputEl) fileInputEl.value = '';
     }
+  }
+
+  async function handleDecryptAndImportEncryptedBackup(e?: SubmitEvent) {
+    if (e) e.preventDefault();
+    if (!pendingEncryptedPayload || !backupPassword) return;
+
+    backupPasswordError = '';
+    isDecryptingBackup = true;
+
+    try {
+      const { addedCount, totalFound } = await vault.importFromEncryptedPayload(
+        pendingEncryptedPayload,
+        backupPassword,
+      );
+      showBackupPasswordModal = false;
+      pendingEncryptedPayload = null;
+      backupPassword = '';
+      if (addedCount === 0) {
+        backupMessage = {
+          type: 'success',
+          text: `All ${totalFound} accounts in this encrypted backup are already in your vault.`,
+        };
+      } else {
+        backupMessage = {
+          type: 'success',
+          text: `Successfully imported ${addedCount} of ${totalFound} accounts from encrypted backup!`,
+        };
+      }
+    } catch {
+      backupPasswordError = 'Incorrect master password or corrupted backup file.';
+    } finally {
+      isDecryptingBackup = false;
+    }
+  }
+
+  function handleCancelEncryptedImport() {
+    showBackupPasswordModal = false;
+    pendingEncryptedPayload = null;
+    backupPassword = '';
+    backupPasswordError = '';
   }
 
   // Local File Sync Handlers
@@ -536,7 +591,7 @@
 {#if isOpen}
   <!-- Modal Backdrop -->
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md print:hidden"
     role="dialog"
     aria-modal="true"
     aria-labelledby="settings-title"
@@ -1109,6 +1164,33 @@
               </div>
             {/if}
 
+            <!-- Emergency Recovery Kit -->
+            <div
+              class="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div class="flex items-start gap-3">
+                <div
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/40 bg-amber-500/20 text-amber-400"
+                >
+                  <ShieldAlert class="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 class="text-xs font-bold text-amber-200">Emergency Recovery Kit</h3>
+                  <p class="text-[11px] text-amber-300/80">
+                    Generate printable/PDF emergency access sheet with recovery guidelines.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onclick={() => (isRecoveryKitOpen = true)}
+                class="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white shadow transition hover:bg-amber-500"
+              >
+                <Printer class="h-3.5 w-3.5" />
+                <span>Generate Kit</span>
+              </button>
+            </div>
+
             <!-- Encrypted Backup -->
             <div
               class="flex items-center justify-between rounded-2xl border border-white/5 bg-zinc-950/60 p-4"
@@ -1320,3 +1402,114 @@
   onClose={() => (isScanConfigOpen = false)}
   onScanned={handleSyncConfigScanned}
 />
+
+<RecoveryKitModal isOpen={isRecoveryKitOpen} onClose={() => (isRecoveryKitOpen = false)} />
+
+<!-- Encrypted Backup Password Prompt Dialog -->
+{#if showBackupPasswordModal}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="backup-password-title"
+  >
+    <div class="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-white/10 pb-4">
+        <div class="flex items-center gap-3">
+          <div
+            class="flex h-9 w-9 items-center justify-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-400"
+          >
+            <KeyRound class="h-5 w-5" />
+          </div>
+          <div>
+            <h3 id="backup-password-title" class="text-sm font-bold text-white">
+              Unlock Encrypted Backup
+            </h3>
+            <p class="text-[11px] text-zinc-400">Enter master password for this backup file</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onclick={handleCancelEncryptedImport}
+          class="rounded-xl p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+          aria-label="Close"
+        >
+          <X class="h-5 w-5" />
+        </button>
+      </div>
+
+      <form onsubmit={handleDecryptAndImportEncryptedBackup} class="mt-5 space-y-4">
+        {#if backupPasswordError}
+          <div
+            class="flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300"
+          >
+            <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <span>{backupPasswordError}</span>
+          </div>
+        {/if}
+
+        <div>
+          <label
+            for="backup-master-password"
+            class="mb-1.5 block text-xs font-semibold text-zinc-300"
+          >
+            Backup Master Password
+          </label>
+          <div class="relative">
+            <input
+              id="backup-master-password"
+              type={showBackupPassword ? 'text' : 'password'}
+              bind:value={backupPassword}
+              required
+              placeholder="Enter password..."
+              autocomplete="current-password"
+              class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 pr-10 text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onclick={() => (showBackupPassword = !showBackupPassword)}
+              class="absolute top-2.5 right-3 text-zinc-400 transition hover:text-zinc-200"
+              aria-label={showBackupPassword ? 'Hide password' : 'Show password'}
+            >
+              {#if showBackupPassword}
+                <EyeOff class="h-4 w-4" />
+              {:else}
+                <Eye class="h-4 w-4" />
+              {/if}
+            </button>
+          </div>
+          <p class="mt-1.5 text-[11px] text-zinc-500">
+            Accounts from this backup will be decrypted client-side and merged into your current
+            vault.
+          </p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2">
+          <button
+            type="button"
+            onclick={handleCancelEncryptedImport}
+            disabled={isDecryptingBackup}
+            class="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={isDecryptingBackup || !backupPassword}
+            class="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:opacity-50"
+          >
+            {#if isDecryptingBackup}
+              <Loader2 class="h-3.5 w-3.5 animate-spin" />
+              <span>Decrypting (Argon2id)...</span>
+            {:else}
+              <Check class="h-3.5 w-3.5" />
+              <span>Decrypt & Import</span>
+            {/if}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}

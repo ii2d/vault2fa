@@ -52,6 +52,13 @@
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(token);
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(30);
+        } catch {
+          // Ignore vibration failure
+        }
+      }
       copied = true;
       setTimeout(() => (copied = false), 1500);
     } catch {

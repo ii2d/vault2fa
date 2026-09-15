@@ -150,4 +150,50 @@ describe('VaultStore group filtering', () => {
     expect(vault.groups.length).toBe(1);
     expect(vault.settings.autoLockTimeoutMinutes).toBe(10);
   });
+
+  it('imports accounts from an encrypted payload into active vault', async () => {
+    const backupPassword = 'BackupPassword456!';
+    const kdf = generateKdfParams();
+    kdf.iterations = 1;
+    kdf.memoryKiB = 1024;
+    const { keyBytes } = await deriveMasterKey(backupPassword, kdf);
+
+    const backupVaultData: VaultData = {
+      version: 1,
+      updatedAt: Date.now(),
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+      groups: [{ id: 'grp-backup', name: 'Finance' }],
+      entries: [
+        {
+          id: 'e-backup-1',
+          issuer: 'Bank',
+          label: 'alice@bank.com',
+          secret: 'HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          groupId: 'grp-backup',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    };
+
+    const payload = await encryptVault(backupVaultData, keyBytes, kdf);
+
+    // Vault is already active with sampleEntries (length 4)
+    vault.status = 'unlocked';
+    const res = await vault.importFromEncryptedPayload(payload, backupPassword);
+
+    expect(res.addedCount).toBe(1);
+    expect(res.totalFound).toBe(1);
+    expect(vault.entries.length).toBe(5);
+    expect(vault.groups.some((g) => g.name === 'Finance')).toBe(true);
+  });
 });

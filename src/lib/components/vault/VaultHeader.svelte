@@ -39,10 +39,11 @@
     <div class="relative">
       <Search class="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-zinc-500" />
       <input
+        id="vault-search-input"
         type="text"
         bind:value={vault.searchQuery}
         placeholder="Search accounts or issuers..."
-        class="w-full rounded-xl border border-white/10 bg-zinc-900/80 py-2 pr-8 pl-9 text-sm text-zinc-200 placeholder-zinc-500 transition outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+        class="w-full rounded-xl border border-white/10 bg-zinc-900/80 py-2 pr-14 pl-9 text-sm text-zinc-200 placeholder-zinc-500 transition outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
       />
       {#if vault.searchQuery}
         <button
@@ -53,6 +54,12 @@
         >
           <X class="h-4 w-4" />
         </button>
+      {:else}
+        <div
+          class="pointer-events-none absolute top-2 right-2.5 hidden items-center rounded border border-white/10 bg-zinc-800/80 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 sm:flex"
+        >
+          ⌘K
+        </div>
       {/if}
     </div>
   </div>
