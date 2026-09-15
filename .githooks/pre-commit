@@ -1,0 +1,15 @@
+#!/bin/sh
+
+echo "Running pre-commit checks..."
+pnpm run format:check || {
+  echo "Prettier formatting check failed. Run 'pnpm run format' to fix."
+  exit 1
+}
+pnpm run lint || {
+  echo "ESLint check failed. Run 'pnpm run lint:fix' to fix."
+  exit 1
+}
+pnpm run test || {
+  echo "Unit tests failed."
+  exit 1
+}
