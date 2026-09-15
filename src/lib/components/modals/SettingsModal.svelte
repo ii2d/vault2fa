@@ -597,9 +597,10 @@
     aria-labelledby="settings-title"
   >
     <div
-      class="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-2xl"
+      class="flex h-[600px] max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-2xl"
     >
       <!-- Header -->
+
       <div class="flex items-center justify-between border-b border-white/10 px-6 py-4">
         <h2 id="settings-title" class="text-base font-bold text-white">Vault Settings</h2>
         <button
