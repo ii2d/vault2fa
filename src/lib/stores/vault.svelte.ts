@@ -138,6 +138,28 @@ class VaultStore {
   }
 
   /**
+   * Unlocks an existing vault using an unwrapped master key (e.g. from WebAuthn biometrics).
+   */
+  async unlockWithMasterKey(keyBytes: Uint8Array): Promise<void> {
+    let payload = this.cachedPayload;
+    if (!payload) {
+      payload = await db.loadEncryptedVault();
+      if (!payload) {
+        this.status = 'uninitialized';
+        throw new Error('No vault found to unlock');
+      }
+      this.cachedPayload = payload;
+    }
+
+    const decrypted = await decryptVault(payload, keyBytes);
+
+    this.masterKey = keyBytes;
+    this.data = decrypted;
+    this.status = 'unlocked';
+    this.startAutoLockTimer();
+  }
+
+  /**
    * Immediately clears sensitive keys and decrypted data from memory.
    */
   lockVault(): void {

@@ -50,8 +50,7 @@
         errorMessage = 'Biometric authentication was cancelled or failed.';
         return;
       }
-      // Unlock with master key directly or via stored credential
-      // If biometrics succeeds, reload/decrypt
+      await vault.unlockWithMasterKey(masterKey);
     } catch (err: unknown) {
       errorMessage = (err as Error).message || 'Biometric authentication failed.';
     } finally {

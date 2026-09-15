@@ -95,7 +95,7 @@ export async function registerBiometricUnlock(masterKey: Uint8Array): Promise<bo
 
   await db.biometrics.put({
     id: 'primary',
-    credentialId: credential.id,
+    credentialId: uint8ArrayToBase64(new Uint8Array(credential.rawId)),
     wrappedKey: uint8ArrayToBase64(new Uint8Array(wrappedBuffer)),
     iv: uint8ArrayToBase64(iv),
     salt: uint8ArrayToBase64(deviceSalt),

@@ -46,4 +46,22 @@ describe('Dexie VaultDatabase Storage Engine', () => {
     expect(await testDb.hasVault()).toBe(false);
     expect(await testDb.loadEncryptedVault()).toBeNull();
   });
+
+  it('stores and retrieves biometric credential records', async () => {
+    expect(await testDb.biometrics.count()).toBe(0);
+
+    await testDb.biometrics.put({
+      id: 'primary',
+      credentialId: 'test-cred-id',
+      wrappedKey: 'wrapped-key-b64',
+      iv: 'iv-b64',
+      salt: 'salt-b64',
+      createdAt: Date.now(),
+    });
+
+    expect(await testDb.biometrics.count()).toBe(1);
+    const rec = await testDb.biometrics.get('primary');
+    expect(rec?.credentialId).toBe('test-cred-id');
+    expect(rec?.wrappedKey).toBe('wrapped-key-b64');
+  });
 });
