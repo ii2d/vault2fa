@@ -51,12 +51,12 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 
 ### Phase 1: Core Foundation & Security (MVP)
 
-- [ ] Initialize Svelte 5 + Vite + Tailwind CSS + `shadcn-svelte` structure.
-- [ ] Implement RFC 6238 TOTP / RFC 4226 HOTP core calculation engine (`otpauth`).
-- [ ] Argon2id WebAssembly key derivation + AES-256-GCM encryption pipeline (`hash-wasm` + Web Crypto API).
-- [ ] Local storage persistence with IndexedDB (`dexie.js`).
-- [ ] Master password creation, session timer, and vault auto-locking.
-- [ ] Camera scanner & manual entry for standard `otpauth://` URIs.
+- [x] Initialize Svelte 5 + Vite + Tailwind CSS + `shadcn-svelte` structure.
+- [x] Implement RFC 6238 TOTP / RFC 4226 HOTP core calculation engine (`otpauth`).
+- [x] Argon2id WebAssembly key derivation + AES-256-GCM encryption pipeline (`hash-wasm` + Web Crypto API).
+- [x] Local storage persistence with IndexedDB (`dexie.js`).
+- [x] Master password creation, session timer, and vault auto-locking.
+- [x] Camera scanner & manual entry for standard `otpauth://` URIs.
 
 ### Phase 2: Interoperability & Hardware Auth
 
