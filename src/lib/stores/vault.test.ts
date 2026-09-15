@@ -1,6 +1,8 @@
+import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { vault } from './vault.svelte';
-import type { OTPEntry } from '$lib/types';
+import type { OTPEntry, VaultData } from '$lib/types';
+import { deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
 
 describe('VaultStore group filtering', () => {
   const sampleEntries: OTPEntry[] = [
@@ -97,5 +99,55 @@ describe('VaultStore group filtering', () => {
     vault.activeGroupId = 'group-personal';
     expect(vault.entries.length).toBe(1);
     expect(vault.entries[0].issuer).toBe('Personal Email');
+  });
+
+  it('restores and unlocks vault from an encrypted payload', async () => {
+    const masterPassword = 'MySecretPassword123!';
+    const kdf = generateKdfParams();
+    // Fast iterations for testing
+    kdf.iterations = 1;
+    kdf.memoryKiB = 1024;
+    const { keyBytes } = await deriveMasterKey(masterPassword, kdf);
+
+    const testVaultData: VaultData = {
+      version: 1,
+      updatedAt: Date.now(),
+      settings: {
+        autoLockTimeoutMinutes: 10,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+      groups: [{ id: 'grp-1', name: 'Dev' }],
+      entries: [
+        {
+          id: 'e-1',
+          issuer: 'GitHub',
+          label: 'alice',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    };
+
+    const payload = await encryptVault(testVaultData, keyBytes, kdf);
+
+    // Set vault as uninitialized
+    vault.status = 'uninitialized';
+    vault.data = null;
+
+    await vault.restoreAndUnlockFromPayload(payload, masterPassword);
+
+    expect(vault.status).toBe('unlocked');
+    expect(vault.isUnlocked).toBe(true);
+    expect(vault.entries.length).toBe(1);
+    expect(vault.entries[0].issuer).toBe('GitHub');
+    expect(vault.groups.length).toBe(1);
+    expect(vault.settings.autoLockTimeoutMinutes).toBe(10);
   });
 });

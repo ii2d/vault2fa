@@ -5,6 +5,8 @@ import {
   fetchGistPayload,
   updateGistPayload,
   syncVaultWithGist,
+  encodeSyncConfigQr,
+  parseSyncConfigQr,
 } from './github-gist';
 import { encryptVault, generateKdfParams } from '$lib/core/crypto';
 import type { EncryptedVaultPayload, VaultData } from '$lib/types';
@@ -194,5 +196,24 @@ describe('GitHub Gist Sync Driver', () => {
     expect(result.syncedVault.entries.length).toBe(2);
     expect(result.entriesAdded).toBe(1);
     expect(result.syncedVault.entries.map((e) => e.issuer).sort()).toEqual(['GitHub', 'Google']);
+  });
+
+  it('encodes and parses Gist sync config QR URI', () => {
+    const config = {
+      token: 'ghp_secret_token_123',
+      gistId: 'gist_abc_456',
+      autoSync: true,
+    };
+
+    const qrUri = encodeSyncConfigQr(config);
+    expect(qrUri).toContain('v2fa-sync://gist');
+    expect(qrUri).toContain('token=ghp_secret_token_123');
+    expect(qrUri).toContain('gistId=gist_abc_456');
+    expect(qrUri).toContain('autoSync=1');
+
+    const parsed = parseSyncConfigQr(qrUri);
+    expect(parsed).toEqual(config);
+
+    expect(parseSyncConfigQr('invalid-uri')).toBeNull();
   });
 });

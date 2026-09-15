@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Shield, Lock, Plus, Search, Clock, X, Settings } from '@lucide/svelte';
+  import { Shield, Lock, Plus, Search, Clock, X, Settings, Cloud, RefreshCw } from '@lucide/svelte';
   import { vault } from '$lib/stores';
 
   let {
@@ -59,6 +59,30 @@
 
   <!-- Actions: Auto-lock status, Lock button, Add button -->
   <div class="order-2 flex items-center gap-2.5 sm:order-3">
+    <!-- Sync Status Badge -->
+    <button
+      type="button"
+      onclick={onOpenSettingsModal}
+      class="hidden items-center gap-1.5 rounded-xl border border-white/5 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-white/10 hover:text-zinc-200 lg:flex"
+      title={vault.data?.settings.syncProvider && vault.data.settings.syncProvider !== 'none'
+        ? `Sync Active (${vault.data.settings.syncProvider}). Click to manage sync.`
+        : 'Setup decentralized sync or backup.'}
+    >
+      {#if vault.syncStatus === 'syncing'}
+        <RefreshCw class="h-3.5 w-3.5 animate-spin text-indigo-400" />
+        <span class="text-indigo-400">Syncing...</span>
+      {:else if vault.syncStatus === 'error'}
+        <span class="h-2 w-2 rounded-full bg-rose-500"></span>
+        <span class="text-rose-400">Sync Error</span>
+      {:else if vault.data?.settings.syncProvider && vault.data.settings.syncProvider !== 'none'}
+        <Cloud class="h-3.5 w-3.5 text-emerald-400" />
+        <span class="text-emerald-400">Synced</span>
+      {:else}
+        <Cloud class="h-3.5 w-3.5 text-zinc-500" />
+        <span class="text-zinc-400">Sync Off</span>
+      {/if}
+    </button>
+
     <!-- Auto-lock countdown badge -->
     <div
       class="hidden items-center gap-1.5 rounded-xl border border-white/5 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-400 md:flex"

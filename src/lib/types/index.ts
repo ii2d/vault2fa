@@ -44,7 +44,7 @@ export interface VaultTombstone {
 
 export interface GistSyncConfig {
   token: string;
-  gistId: string;
+  gistId?: string;
   lastSyncedAt?: number;
   autoSync: boolean;
 }
@@ -67,7 +67,7 @@ export interface VaultSettings {
   localFileSync?: LocalFileSyncConfig;
 }
 
-export type SyncProviderType = 'none' | 'local-file' | 'github-gist' | 'air-gap' | 'webdav';
+export type SyncProviderType = 'none' | 'local-file' | 'github-gist' | 'webdav';
 
 /**
  * Decrypted in-memory representation of the user vault.

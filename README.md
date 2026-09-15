@@ -8,13 +8,15 @@
 [![PWA Ready](https://img.shields.io/badge/PWA-Offline%20First-green?logo=pwa)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
 [![Zero Backend](https://img.shields.io/badge/Architecture-100%25%20Serverless-purple)](<>)
 
+🌐 **Live Application**: [https://2fa.ii2d.com](https://2fa.ii2d.com)
+
 ---
 
 ## 🌟 Overview
 
 `vault2fa` is a privacy-first, zero-knowledge Two-Factor Authentication (2FA) client. Built with **Svelte 5** and compiling down to pure, highly optimized native JavaScript, `vault2fa` provides native-grade responsiveness and sub-second startup times while running entirely inside your browser sandbox as an offline-first Progressive Web App (PWA).
 
-Your secrets **never touch any third-party servers unencrypted**. You retain complete custody of your keys with flexible backup options ranging from local directory binding to GitHub Gist and air-gapped animated QR transmission.
+Your secrets **never touch any third-party servers unencrypted**. You retain complete custody of your keys with flexible backup options ranging from local directory binding to GitHub Gist synchronization.
 
 ---
 
@@ -37,10 +39,9 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 - 📁 **Local File System Access API**:
   - Direct bidirectional binding to a local file (`vault.enc`).
   - Sync across devices seamlessly using your existing iCloud Drive, OneDrive, Syncthing, or Dropbox folders without OAuth configurations.
-- 🐙 **Encrypted GitHub Gist Sync**:
+- 🐙 **Encrypted GitHub Gist Sync & QR Pairing**:
   - Optional automatic synchronization to a private GitHub Gist with full Git commit history for effortless version rollbacks.
-- 📷 **Air-Gapped Cross-Device Sync**:
-  - Transfer entire encrypted vaults across devices completely offline using high-density **animated QR codes (UR / multi-frame)**.
+  - One-click QR code device pairing to effortlessly link secondary devices.
 - 🔄 **Wide Ecosystem Compatibility**:
   - One-click import from **Google Authenticator** (`otpauth-migration://` QR / Protobuf).
   - Import/Export support for **Aegis Authenticator**, **Bitwarden**, and standard `otpauth://` URIs.
@@ -68,10 +69,10 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 
 ### Phase 3: Decentralized Sync & Backup
 
-- [ ] Native File System Access API integration (read/write local `.vault` file).
-- [ ] GitHub Gist sync driver (using scoped Personal Access Tokens).
-- [ ] Air-gapped vault transfer via animated frame-by-frame QR codes.
-- [ ] Entry-level tombstone & conflict-resolution logic for multi-device sync.
+- [x] Native File System Access API integration (read/write local `.vault` file).
+- [x] GitHub Gist sync driver (using scoped Personal Access Tokens).
+- [x] Gist configuration QR pairing and sharing.
+- [x] Entry-level tombstone & conflict-resolution logic for multi-device sync.
 
 ### Phase 4: Extended Cloud & UX Polish
 

@@ -220,3 +220,52 @@ export async function syncVaultWithGist(
     entriesDeleted: mergeResult.entriesDeleted,
   };
 }
+
+export const SYNC_CONFIG_SCHEME = 'v2fa-sync://gist';
+
+/**
+ * Encodes a GitHub Gist sync configuration into a single static QR pairing string.
+ */
+export function encodeSyncConfigQr(config: {
+  token: string;
+  gistId?: string;
+  autoSync: boolean;
+}): string {
+  const params = new URLSearchParams();
+  params.set('token', config.token.trim());
+  if (config.gistId?.trim()) {
+    params.set('gistId', config.gistId.trim());
+  }
+  params.set('autoSync', config.autoSync ? '1' : '0');
+  return `${SYNC_CONFIG_SCHEME}?${params.toString()}`;
+}
+
+/**
+ * Parses a static QR pairing string into a GistSyncConfig object.
+ */
+export function parseSyncConfigQr(
+  raw: string,
+): { token: string; gistId?: string; autoSync: boolean } | null {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith(SYNC_CONFIG_SCHEME)) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const token = url.searchParams.get('token');
+    if (!token) return null;
+
+    const gistId = url.searchParams.get('gistId') || undefined;
+    const autoSyncParam = url.searchParams.get('autoSync');
+    const autoSync = autoSyncParam !== '0';
+
+    return {
+      token,
+      gistId,
+      autoSync,
+    };
+  } catch {
+    return null;
+  }
+}
