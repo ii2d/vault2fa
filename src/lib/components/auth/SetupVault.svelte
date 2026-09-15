@@ -22,6 +22,7 @@
   } from '$lib/core/backup';
   import { isPlainTextOtpList } from '$lib/core/totp';
   import type { EncryptedVaultPayload, VaultData } from '$lib/types';
+  import { APP_CONFIG } from '$lib/config';
 
   let activeTab = $state<'create' | 'restore'>('create');
 
@@ -293,7 +294,7 @@
         <input
           type="text"
           name="username"
-          value="vault2fa"
+          value={APP_CONFIG.name}
           autocomplete="username"
           tabindex="-1"
           aria-hidden="true"
@@ -425,8 +426,8 @@
               Select Backup File
             </h3>
             <p class="mt-1 text-xs text-zinc-400">
-              Supports <span class="font-mono text-zinc-300">.json</span> (vault2fa encrypted /
-              Aegis) or <span class="font-mono text-zinc-300">.txt</span> URI lists
+              Supports <span class="font-mono text-zinc-300">.json</span> ({APP_CONFIG.name} encrypted
+              / Aegis) or <span class="font-mono text-zinc-300">.txt</span> URI lists
             </p>
           </button>
 
@@ -460,11 +461,11 @@
                 <p class="truncate text-xs font-semibold text-zinc-200">{selectedFileName}</p>
                 <p class="text-[10px] text-zinc-400">
                   {#if detectedFormat === 'vault2fa-encrypted'}
-                    Encrypted vault2fa backup
+                    Encrypted {APP_CONFIG.name} backup
                   {:else if detectedFormat === 'aegis'}
                     Aegis Authenticator format ({unencryptedVaultData?.entries.length ?? 0} accounts)
                   {:else if detectedFormat === 'vault2fa-decrypted'}
-                    Decrypted vault2fa ({unencryptedVaultData?.entries.length ?? 0} accounts)
+                    Decrypted {APP_CONFIG.name} ({unencryptedVaultData?.entries.length ?? 0} accounts)
                   {:else}
                     Plain text URI list ({unencryptedVaultData?.entries.length ?? 0} accounts)
                   {/if}

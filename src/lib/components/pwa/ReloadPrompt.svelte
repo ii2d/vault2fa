@@ -1,6 +1,7 @@
 <script lang="ts">
   import { registerSW } from 'virtual:pwa-register';
   import { RefreshCw, CheckCircle2, X } from '@lucide/svelte';
+  import { APP_CONFIG } from '$lib/config';
 
   let offlineReady = $state(false);
   let needRefresh = $state(false);
@@ -47,7 +48,7 @@
       </div>
       <div class="flex-1 text-xs">
         <p class="font-medium text-zinc-200">Offline Ready</p>
-        <p class="text-zinc-400">vault2fa is cached and ready to work without internet.</p>
+        <p class="text-zinc-400">{APP_CONFIG.name} is cached and ready to work without internet.</p>
       </div>
     {:else if needRefresh}
       <div

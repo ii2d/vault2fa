@@ -12,6 +12,7 @@
   import { vault } from '$lib/stores';
   import { db } from '$lib/core/storage';
   import { downloadTextFile, exportEncryptedBackup } from '$lib/core/backup';
+  import { APP_CONFIG } from '$lib/config';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
@@ -33,10 +34,7 @@
 
   function generateQr() {
     try {
-      const appUrl =
-        typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null'
-          ? window.location.origin
-          : 'https://2fa.ii2d.com';
+      const appUrl = APP_CONFIG.origin;
       const writer = new BrowserQRCodeSvgWriter();
       const svgEl = writer.write(appUrl, 100, 100);
       svgEl.setAttribute('viewBox', '0 0 100 100');
@@ -132,7 +130,7 @@
               <span
                 class="rounded bg-indigo-600 px-2 py-0.5 text-xs font-bold tracking-wider text-white uppercase print:border print:border-black print:bg-black/5 print:text-black"
               >
-                vault2fa
+                {APP_CONFIG.name}
               </span>
               <span class="text-sm font-semibold text-zinc-200 print:text-black">
                 Account Recovery Sheet
@@ -160,7 +158,7 @@
               <span
                 class="mt-1 text-center font-mono text-[10px] font-bold tracking-tight text-zinc-900 print:text-black"
               >
-                2fa.ii2d.com
+                {APP_CONFIG.hostname}
               </span>
             </div>
           {/if}
@@ -175,9 +173,9 @@
             <div>
               <strong class="font-semibold">Keep this document confidential and offline.</strong>
               <p class="mt-0.5 opacity-90">
-                `vault2fa` uses zero-backend client-side encryption. If you lose your master
-                password, there is no customer support or password reset mechanism to recover your
-                2FA tokens. Store this paper copy in a safe or secure lockbox.
+                `{APP_CONFIG.name}` uses zero-backend client-side encryption. If you lose your
+                master password, there is no customer support or password reset mechanism to recover
+                your 2FA tokens. Store this paper copy in a safe or secure lockbox.
               </p>
             </div>
           </div>
@@ -221,7 +219,7 @@
             >
               <span class="text-xs font-bold text-indigo-400 print:text-black">Step 1: Access</span>
               <p class="mt-1 text-xs text-zinc-400 print:text-zinc-800">
-                Open <strong class="text-zinc-200 print:text-black">https://2fa.ii2d.com</strong> on any
+                Open <strong class="text-zinc-200 print:text-black">{APP_CONFIG.origin}</strong> on any
                 modern browser or scan the QR code above.
               </p>
             </div>

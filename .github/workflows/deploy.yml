@@ -38,6 +38,14 @@ jobs:
 
       - name: Build production bundle
         run: pnpm run build
+        env:
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'vault2fa' }}
+          VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE || 'Zero-Knowledge TOTP Authenticator' }}
+          VITE_APP_SUBTITLE: ${{ vars.VITE_APP_SUBTITLE || 'Zero-Knowledge TOTP' }}
+          VITE_APP_DESCRIPTION: ${{ vars.VITE_APP_DESCRIPTION || 'Privacy-first, zero-knowledge, local-first 2FA/TOTP authenticator PWA' }}
+          VITE_APP_REPO_URL: ${{ vars.VITE_APP_REPO_URL || format('{0}/{1}', github.server_url, github.repository) }}
+          VITE_APP_URL: ${{ vars.VITE_APP_URL || '' }}
+          VITE_APP_THEME_COLOR: ${{ vars.VITE_APP_THEME_COLOR || '#09090b' }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v6

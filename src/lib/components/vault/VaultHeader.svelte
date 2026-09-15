@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Shield, Lock, Plus, Search, Clock, X, Settings, Cloud, RefreshCw } from '@lucide/svelte';
   import { vault } from '$lib/stores';
+  import { APP_CONFIG } from '$lib/config';
 
   let {
     onOpenAddModal,
@@ -29,8 +30,8 @@
       <Shield class="h-5 w-5 text-white" />
     </div>
     <div>
-      <span class="text-base font-bold tracking-tight text-white">vault2fa</span>
-      <span class="hidden text-xs text-zinc-500 sm:ml-2 sm:inline">Zero-Knowledge TOTP</span>
+      <span class="text-base font-bold tracking-tight text-white">{APP_CONFIG.name}</span>
+      <span class="hidden text-xs text-zinc-500 sm:ml-2 sm:inline">{APP_CONFIG.subtitle}</span>
     </div>
   </div>
 

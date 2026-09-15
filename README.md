@@ -102,26 +102,50 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 ### Prerequisites
 
 - Node.js >= 18.0.0
-- npm / pnpm / yarn / bun
+- pnpm (recommended), npm, yarn, or bun
 
 ### Installation
 
 ```bash
-# Clone the repository
+# 1. Clone the repository (or your fork)
 git clone https://github.com/ii2d/vault2fa.git
 cd vault2fa
 
-# Install dependencies
-npm install
+# 2. Copy environment template (optional)
+cp .env.example .env
 
-# Start local development server
-npm run dev
+# 3. Install dependencies
+pnpm install
+
+# 4. Start local development server
+pnpm run dev
 ```
+
+### ⚙️ Custom Branding & Configuration
+
+You can customize app branding, titles, domains, and repository links without touching the codebase. Copy `.env.example` to `.env` and set your preferred values:
+
+```bash
+# Application Branding
+VITE_APP_NAME="vault2fa"
+VITE_APP_TITLE="Zero-Knowledge TOTP Authenticator"
+VITE_APP_SUBTITLE="Zero-Knowledge TOTP"
+VITE_APP_DESCRIPTION="Privacy-first, zero-knowledge, local-first 2FA/TOTP authenticator PWA"
+
+# URLs & Repository (defaults to dynamic browser origin if empty)
+VITE_APP_URL="https://2fa.ii2d.com"
+VITE_APP_REPO_URL="https://github.com/ii2d/vault2fa"
+
+# Theme & Colors
+VITE_APP_THEME_COLOR="#09090b"
+```
+
+To customize icons, simply replace `public/favicon.svg`, `public/icon.svg`, and `public/apple-touch-icon.png` with your own assets.
 
 ### Production Build
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 The compiled assets will be placed in the `dist/` directory, ready to be served statically.
@@ -130,18 +154,22 @@ The compiled assets will be placed in the `dist/` directory, ready to be served 
 
 ## 🚢 Deployment
 
-Because `vault2fa` has no server dependencies, you can deploy it in seconds:
+Because `vault2fa` is 100% client-side with no server dependencies, you can deploy it in seconds:
 
-### GitHub Pages
+### GitHub Pages (For Forks & Clones)
 
-1. Push your repository to GitHub.
-2. Go to **Settings > Pages**.
-3. Under **Build and deployment > Source**, select **GitHub Actions** (using the default Vite/Static Pages workflow).
+1. Fork or clone this repository to your GitHub account.
+2. (Optional) Go to **Settings > Secrets and variables > Actions > Variables** in your GitHub repository and define custom variables like `VITE_APP_NAME`, `VITE_APP_TITLE`, `VITE_APP_URL`, etc. By default, `VITE_APP_REPO_URL` automatically points to your repository!
+3. Go to **Settings > Pages**.
+4. Under **Build and deployment > Source**, select **GitHub Actions**.
+5. Push a commit to `main` (or run the workflow manually under the **Actions** tab).
 
-### Cloudflare Pages / Vercel
+### Cloudflare Pages / Vercel / Netlify
 
-- **Build Command**: `npm run build`
+- **Framework Preset**: Vite
+- **Build Command**: `pnpm run build`
 - **Output Directory**: `dist`
+- **Environment Variables**: Configure any `VITE_APP_*` variables in the platform dashboard.
 
 ---
 

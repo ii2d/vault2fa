@@ -6,6 +6,7 @@
   import { MainVault } from '$lib/components/vault';
   import { AddAccountModal, SettingsModal } from '$lib/components/modals';
   import ReloadPrompt from '$lib/components/pwa/ReloadPrompt.svelte';
+  import { APP_CONFIG } from '$lib/config';
 
   let isAddModalOpen = $state(false);
   let isSettingsModalOpen = $state(false);
@@ -85,7 +86,7 @@
       </div>
       <div class="flex items-center gap-2 text-sm text-zinc-400">
         <Loader2 class="h-4 w-4 animate-spin" />
-        <span>Loading vault2fa...</span>
+        <span>Loading {APP_CONFIG.name}...</span>
       </div>
     </div>
   {:else if vault.status === 'uninitialized'}

@@ -46,6 +46,7 @@
   import { isPlainTextOtpList } from '$lib/core/totp';
   import { SyncConfigShareModal, SyncConfigScanModal } from '$lib/components/sync';
   import RecoveryKitModal from './RecoveryKitModal.svelte';
+  import { APP_CONFIG } from '$lib/config';
   import {
     isFileSystemAccessSupported,
     pickLocalVaultFile,
@@ -226,7 +227,7 @@
 
     const content = exportEncryptedBackup(payload);
     const dateStr = new Date().toISOString().slice(0, 10);
-    downloadTextFile(`vault2fa-backup-${dateStr}.json`, content);
+    downloadTextFile(`${APP_CONFIG.name}-backup-${dateStr}.json`, content);
     backupMessage = { type: 'success', text: 'Encrypted backup downloaded successfully.' };
   }
 
@@ -244,7 +245,7 @@
 
     const content = exportPlainTextBackup(vault.data);
     const dateStr = new Date().toISOString().slice(0, 10);
-    downloadTextFile(`vault2fa-uris-${dateStr}.txt`, content, 'text/plain');
+    downloadTextFile(`${APP_CONFIG.name}-uris-${dateStr}.txt`, content, 'text/plain');
     backupMessage = { type: 'success', text: 'Plain text URI list downloaded successfully.' };
   }
 
@@ -253,7 +254,7 @@
 
     const content = exportDecryptedBackup(vault.data);
     const dateStr = new Date().toISOString().slice(0, 10);
-    downloadTextFile(`vault2fa-decrypted-${dateStr}.json`, content);
+    downloadTextFile(`${APP_CONFIG.name}-decrypted-${dateStr}.json`, content);
     showDecryptedWarning = false;
     backupMessage = { type: 'success', text: 'Decrypted backup downloaded. Keep it secure!' };
   }
@@ -1009,7 +1010,7 @@
                   >
                     <span class="min-w-0 font-medium">GitHub Personal Access Token (PAT)</span>
                     <a
-                      href="https://github.com/settings/tokens/new?scopes=gist&description=vault2fa-sync"
+                      href={`https://github.com/settings/tokens/new?scopes=gist&description=${encodeURIComponent(APP_CONFIG.name)}-sync`}
                       target="_blank"
                       rel="noreferrer"
                       class="inline-flex shrink-0 items-center gap-1 text-[11px] whitespace-nowrap text-indigo-400 transition hover:underline"
@@ -1023,8 +1024,8 @@
                       id="gist-pat-input"
                       type={showGistToken ? 'text' : 'password'}
                       bind:value={gistToken}
-                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_..."
-                      class="w-full rounded-xl border border-white/10 bg-zinc-900/80 py-2 pr-10 pl-3 text-xs text-zinc-200 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      class="w-full rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2 pr-10 font-mono text-xs text-zinc-200 placeholder-zinc-600 transition outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                     />
                     <button
                       type="button"
@@ -1340,8 +1341,8 @@
                 <Shield class="h-6 w-6" />
               </div>
               <div>
-                <h3 class="text-sm font-bold text-white">vault2fa</h3>
-                <p class="text-xs text-zinc-400">Zero-Backend, Local-First 2FA Authenticator</p>
+                <h3 class="text-sm font-bold text-white">{APP_CONFIG.name}</h3>
+                <p class="text-xs text-zinc-400">{APP_CONFIG.title}</p>
               </div>
             </div>
 
@@ -1370,7 +1371,7 @@
 
             <div class="pt-2 text-center text-xs text-zinc-500">
               <a
-                href="https://github.com/ii2d/vault2fa"
+                href={APP_CONFIG.repoUrl}
                 target="_blank"
                 rel="noreferrer"
                 class="text-indigo-400 transition hover:underline"

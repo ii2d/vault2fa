@@ -28,6 +28,7 @@
   } from '$lib/core/backup';
   import { isPlainTextOtpList } from '$lib/core/totp';
   import type { EncryptedVaultPayload, VaultData } from '$lib/types';
+  import { APP_CONFIG } from '$lib/config';
 
   let password = $state('');
   let showPassword = $state(false);
@@ -268,7 +269,7 @@
       <input
         type="text"
         name="username"
-        value="vault2fa"
+        value={APP_CONFIG.name}
         autocomplete="username"
         tabindex="-1"
         aria-hidden="true"
@@ -487,7 +488,7 @@
                 <p class="truncate text-xs font-semibold text-zinc-200">{selectedFileName}</p>
                 <p class="text-[10px] text-zinc-400">
                   {detectedFormat === 'vault2fa-encrypted'
-                    ? 'Encrypted vault2fa backup'
+                    ? `Encrypted ${APP_CONFIG.name} backup`
                     : 'Unencrypted backup'}
                 </p>
               </div>
