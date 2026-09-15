@@ -5,6 +5,7 @@
   import { SetupVault, UnlockVault } from '$lib/components/auth';
   import { MainVault } from '$lib/components/vault';
   import { AddAccountModal } from '$lib/components/modals';
+  import ReloadPrompt from '$lib/components/pwa/ReloadPrompt.svelte';
 
   let isAddModalOpen = $state(false);
 
@@ -49,4 +50,6 @@
     <MainVault onOpenAddModal={() => (isAddModalOpen = true)} />
     <AddAccountModal isOpen={isAddModalOpen} onClose={() => (isAddModalOpen = false)} />
   {/if}
+
+  <ReloadPrompt />
 </div>
