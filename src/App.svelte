@@ -4,10 +4,11 @@
   import { vault } from '$lib/stores';
   import { SetupVault, UnlockVault } from '$lib/components/auth';
   import { MainVault } from '$lib/components/vault';
-  import { AddAccountModal } from '$lib/components/modals';
+  import { AddAccountModal, SettingsModal } from '$lib/components/modals';
   import ReloadPrompt from '$lib/components/pwa/ReloadPrompt.svelte';
 
   let isAddModalOpen = $state(false);
+  let isSettingsModalOpen = $state(false);
 
   onMount(async () => {
     await vault.checkInitialState();
@@ -47,8 +48,12 @@
   {:else if vault.status === 'locked'}
     <UnlockVault />
   {:else}
-    <MainVault onOpenAddModal={() => (isAddModalOpen = true)} />
+    <MainVault
+      onOpenAddModal={() => (isAddModalOpen = true)}
+      onOpenSettingsModal={() => (isSettingsModalOpen = true)}
+    />
     <AddAccountModal isOpen={isAddModalOpen} onClose={() => (isAddModalOpen = false)} />
+    <SettingsModal isOpen={isSettingsModalOpen} onClose={() => (isSettingsModalOpen = false)} />
   {/if}
 
   <ReloadPrompt />

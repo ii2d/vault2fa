@@ -289,6 +289,69 @@ class VaultStore {
   }
 
   /**
+   * Returns current cached encrypted payload (for backup export).
+   */
+  getCachedPayload(): EncryptedVaultPayload | null {
+    return this.cachedPayload;
+  }
+
+  /**
+   * Returns master key bytes in memory (for biometrics wrapping).
+   */
+  getMasterKey(): Uint8Array | null {
+    return this.masterKey;
+  }
+
+  /**
+   * Re-encrypts the vault with a new master password and fresh Argon2id salt.
+   */
+  async changeMasterPassword(currentPassword: string, newPassword: string): Promise<void> {
+    this.ensureUnlocked();
+
+    // Verify current password first
+    const { keyBytes: testKey } = await deriveMasterKey(currentPassword, this.cachedPayload!.kdf);
+    await decryptVault(this.cachedPayload!, testKey);
+
+    // Derive new key with fresh KDF params
+    const newKdfParams = generateKdfParams();
+    const { keyBytes: newKeyBytes } = await deriveMasterKey(newPassword, newKdfParams);
+
+    const newPayload = await encryptVault(this.data!, newKeyBytes, newKdfParams);
+    await db.saveEncryptedVault(newPayload);
+
+    this.cachedPayload = newPayload;
+    this.masterKey = newKeyBytes;
+  }
+
+  /**
+   * Imports entries and groups from backup or external sources.
+   */
+  async importEntriesAndGroups(
+    importedEntries: OTPEntry[],
+    importedGroups?: VaultGroup[],
+  ): Promise<{ addedCount: number }> {
+    this.ensureUnlocked();
+
+    const existingSecrets = new Set(this.data!.entries.map((e) => e.secret));
+    const toAdd = importedEntries.filter((e) => !existingSecrets.has(e.secret));
+
+    const existingGroupNames = new Set(this.data!.groups.map((g) => g.name.toLowerCase()));
+    const groupsToAdd = (importedGroups || []).filter(
+      (g) => !existingGroupNames.has(g.name.toLowerCase()),
+    );
+
+    const updatedData: VaultData = {
+      ...this.data!,
+      updatedAt: Date.now(),
+      groups: [...this.data!.groups, ...groupsToAdd],
+      entries: [...this.data!.entries, ...toAdd],
+    };
+
+    await this.persistData(updatedData);
+    return { addedCount: toAdd.length };
+  }
+
+  /**
    * Completely resets the vault and database.
    */
   async resetAll(): Promise<void> {

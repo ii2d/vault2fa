@@ -166,3 +166,10 @@ export async function authenticateWithBiometrics(): Promise<Uint8Array | null> {
 
   return new Uint8Array(masterKeyBuffer);
 }
+
+/**
+ * Removes the biometric credential from IndexedDB.
+ */
+export async function removeBiometricUnlock(): Promise<void> {
+  await db.biometrics.clear();
+}

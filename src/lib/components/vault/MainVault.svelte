@@ -6,7 +6,13 @@
   import TokenCard from './TokenCard.svelte';
   import EmptyVault from './EmptyVault.svelte';
 
-  let { onOpenAddModal }: { onOpenAddModal: () => void } = $props();
+  let {
+    onOpenAddModal,
+    onOpenSettingsModal,
+  }: {
+    onOpenAddModal: () => void;
+    onOpenSettingsModal: () => void;
+  } = $props();
 
   const totalEntriesCount = $derived(vault.data?.entries.length ?? 0);
   const filteredEntries = $derived(vault.entries);
@@ -14,7 +20,7 @@
 
 <div class="flex min-h-screen flex-col bg-zinc-950">
   <!-- Sticky Header -->
-  <VaultHeader {onOpenAddModal} />
+  <VaultHeader {onOpenAddModal} {onOpenSettingsModal} />
 
   <!-- Main Content Container -->
   <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">

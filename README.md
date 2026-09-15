@@ -60,10 +60,10 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 
 ### Phase 2: Interoperability & Hardware Auth
 
-- [ ] Google Authenticator migration payload parser (Protobuf deserialization).
-- [ ] Aegis Authenticator JSON import/export (encrypted & unencrypted).
-- [ ] WebAuthn / Passkey integration for biometric vault unlock (Touch ID / Face ID / Windows Hello).
-- [ ] PWA Service Worker caching for seamless offline usage (`@vite-pwa/svelte`).
+- [x] Google Authenticator migration payload parser (Protobuf deserialization).
+- [x] Aegis Authenticator JSON import/export (encrypted & unencrypted).
+- [x] WebAuthn / Passkey integration for biometric vault unlock (Touch ID / Face ID / Windows Hello).
+- [x] PWA Service Worker caching for seamless offline usage (`vite-plugin-pwa`).
 
 ### Phase 3: Decentralized Sync & Backup
 

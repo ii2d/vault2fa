@@ -1,8 +1,14 @@
 <script lang="ts">
-  import { Shield, Lock, Plus, Search, Clock, X } from '@lucide/svelte';
+  import { Shield, Lock, Plus, Search, Clock, X, Settings } from '@lucide/svelte';
   import { vault } from '$lib/stores';
 
-  let { onOpenAddModal }: { onOpenAddModal: () => void } = $props();
+  let {
+    onOpenAddModal,
+    onOpenSettingsModal,
+  }: {
+    onOpenAddModal: () => void;
+    onOpenSettingsModal: () => void;
+  } = $props();
 
   const formattedCountdown = $derived.by(() => {
     const totalSec = vault.autoLockSecondsLeft;
@@ -62,6 +68,17 @@
       <span>Auto-lock:</span>
       <span class="font-mono font-medium text-zinc-200">{formattedCountdown}</span>
     </div>
+
+    <!-- Settings Button -->
+    <button
+      type="button"
+      onclick={onOpenSettingsModal}
+      class="flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+      title="Settings & Preferences"
+    >
+      <Settings class="h-3.5 w-3.5 text-zinc-400" />
+      <span class="hidden sm:inline">Settings</span>
+    </button>
 
     <!-- Manual Lock Button -->
     <button
