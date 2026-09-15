@@ -836,72 +836,72 @@
                     />
                   </label>
 
-                  <div class="flex flex-wrap gap-2 pt-2">
+                  <div class="grid grid-cols-2 gap-2 pt-2 sm:grid-cols-3">
                     <button
                       type="button"
                       onclick={handleSaveLocalFileNow}
                       disabled={isProcessingLocalFile}
-                      class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                      class="flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold whitespace-nowrap text-white transition hover:bg-indigo-500 disabled:opacity-50"
                     >
                       {#if isProcessingLocalFile}
-                        <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                        <Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin" />
                       {:else}
-                        <HardDrive class="h-3.5 w-3.5" />
+                        <HardDrive class="h-3.5 w-3.5 shrink-0" />
                       {/if}
-                      <span>Save to File</span>
+                      <span class="whitespace-nowrap">Save to File</span>
                     </button>
 
                     <button
                       type="button"
                       onclick={handleMergeLocalFileNow}
                       disabled={isProcessingLocalFile}
-                      class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-800 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-50"
+                      class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-800 px-3 py-2 text-xs font-semibold whitespace-nowrap text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-50"
                     >
                       <RefreshCw
-                        class="h-3.5 w-3.5 {isProcessingLocalFile ? 'animate-spin' : ''}"
+                        class="h-3.5 w-3.5 shrink-0 {isProcessingLocalFile ? 'animate-spin' : ''}"
                       />
-                      <span>Pull & Merge</span>
+                      <span class="whitespace-nowrap">Pull & Merge</span>
                     </button>
 
                     <button
                       type="button"
                       onclick={handleUnlinkLocalFile}
-                      class="flex items-center justify-center gap-1 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20"
+                      class="col-span-2 flex items-center justify-center gap-1 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold whitespace-nowrap text-rose-400 transition hover:bg-rose-500/20 sm:col-span-1"
                       title="Unlink file handle"
                     >
-                      <Unlink class="h-3.5 w-3.5" />
-                      <span>Unlink</span>
+                      <Unlink class="h-3.5 w-3.5 shrink-0" />
+                      <span class="whitespace-nowrap">Unlink</span>
                     </button>
                   </div>
                 </div>
               {:else}
-                <div class="mt-4 flex flex-wrap gap-2">
+                <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <button
                     type="button"
                     onclick={handleLinkLocalFile}
                     disabled={isProcessingLocalFile}
-                    class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-800 hover:text-white disabled:opacity-50"
+                    class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2.5 text-xs font-semibold whitespace-nowrap text-zinc-200 transition hover:bg-zinc-800 hover:text-white disabled:opacity-50"
                   >
                     {#if isProcessingLocalFile}
-                      <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin" />
                     {:else}
-                      <HardDrive class="h-3.5 w-3.5 text-indigo-400" />
+                      <HardDrive class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
                     {/if}
-                    <span>Link Existing .vault</span>
+                    <span class="whitespace-nowrap">Link Existing .vault</span>
                   </button>
 
                   <button
                     type="button"
                     onclick={handleCreateLocalFile}
                     disabled={isProcessingLocalFile}
-                    class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                    class="flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2.5 text-xs font-semibold whitespace-nowrap text-white transition hover:bg-indigo-500 disabled:opacity-50"
                   >
                     {#if isProcessingLocalFile}
-                      <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin" />
                     {:else}
-                      <HardDrive class="h-3.5 w-3.5" />
+                      <HardDrive class="h-3.5 w-3.5 shrink-0" />
                     {/if}
-                    <span>Create New .vault</span>
+                    <span class="whitespace-nowrap">Create New .vault</span>
                   </button>
                 </div>
               {/if}
@@ -949,17 +949,17 @@
                 <div>
                   <label
                     for="gist-pat-input"
-                    class="flex items-center justify-between text-xs font-medium text-zinc-300"
+                    class="flex flex-wrap items-center justify-between gap-1.5 text-xs font-medium text-zinc-300"
                   >
-                    <span>GitHub Personal Access Token (PAT)</span>
+                    <span class="min-w-0 font-medium">GitHub Personal Access Token (PAT)</span>
                     <a
                       href="https://github.com/settings/tokens/new?scopes=gist&description=vault2fa-sync"
                       target="_blank"
                       rel="noreferrer"
-                      class="flex items-center gap-1 text-[11px] text-indigo-400 transition hover:underline"
+                      class="inline-flex shrink-0 items-center gap-1 text-[11px] whitespace-nowrap text-indigo-400 transition hover:underline"
                     >
                       <span>Create Token</span>
-                      <ExternalLink class="h-3 w-3" />
+                      <ExternalLink class="h-3 w-3 shrink-0" />
                     </a>
                   </label>
                   <div class="relative mt-1">
@@ -1019,26 +1019,26 @@
                   </div>
                 {/if}
 
-                <div class="flex flex-wrap gap-2 pt-1">
+                <div class="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-3">
                   <button
                     type="button"
                     onclick={() => (isScanConfigOpen = true)}
-                    class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-800"
+                    class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold whitespace-nowrap text-zinc-200 transition hover:bg-zinc-800"
                     title="Scan Config QR from another device"
                   >
-                    <Camera class="h-3.5 w-3.5 text-purple-400" />
-                    <span>Scan QR</span>
+                    <Camera class="h-3.5 w-3.5 shrink-0 text-purple-400" />
+                    <span class="whitespace-nowrap">Scan QR</span>
                   </button>
 
                   {#if gistToken.trim()}
                     <button
                       type="button"
                       onclick={() => (isShareConfigOpen = true)}
-                      class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-800"
+                      class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold whitespace-nowrap text-zinc-200 transition hover:bg-zinc-800"
                       title="Share sync configuration via QR code"
                     >
-                      <QrCode class="h-3.5 w-3.5 text-purple-400" />
-                      <span>Share QR</span>
+                      <QrCode class="h-3.5 w-3.5 shrink-0 text-purple-400" />
+                      <span class="whitespace-nowrap">Share QR</span>
                     </button>
                   {/if}
 
@@ -1046,39 +1046,39 @@
                     type="button"
                     onclick={handleValidateGistToken}
                     disabled={isValidatingToken || !gistToken.trim()}
-                    class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-50"
+                    class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold whitespace-nowrap text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-50"
                   >
                     {#if isValidatingToken}
-                      <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin" />
                     {:else}
-                      <Check class="h-3.5 w-3.5 text-emerald-400" />
+                      <Check class="h-3.5 w-3.5 shrink-0 text-emerald-400" />
                     {/if}
-                    <span>Validate Token</span>
+                    <span class="whitespace-nowrap">Validate Token</span>
                   </button>
 
                   <button
                     type="button"
                     onclick={handleSyncGistNow}
                     disabled={isSyncingGist || !gistToken.trim()}
-                    class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/25 transition hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50"
+                    class="col-span-2 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-xs font-semibold whitespace-nowrap text-white shadow-md shadow-indigo-600/25 transition hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 sm:col-span-1"
                   >
                     {#if isSyncingGist}
-                      <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 class="h-3.5 w-3.5 shrink-0 animate-spin" />
                     {:else}
-                      <RefreshCw class="h-3.5 w-3.5" />
+                      <RefreshCw class="h-3.5 w-3.5 shrink-0" />
                     {/if}
-                    <span>Sync Now</span>
+                    <span class="whitespace-nowrap">Sync Now</span>
                   </button>
 
                   {#if vault.data?.settings.gistSync}
                     <button
                       type="button"
                       onclick={handleDisconnectGist}
-                      class="flex items-center justify-center gap-1 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20"
+                      class="col-span-2 flex items-center justify-center gap-1 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold whitespace-nowrap text-rose-400 transition hover:bg-rose-500/20 sm:col-span-1"
                       title="Disconnect Gist"
                     >
-                      <Unlink class="h-3.5 w-3.5" />
-                      <span>Disconnect</span>
+                      <Unlink class="h-3.5 w-3.5 shrink-0" />
+                      <span class="whitespace-nowrap">Disconnect</span>
                     </button>
                   {/if}
                 </div>
