@@ -3,83 +3,83 @@
  * Zero-backend, local-first 2FA/TOTP authenticator
  */
 
-export type OTPType = 'totp' | 'hotp'
+export type OTPType = 'totp' | 'hotp';
 
-export type OTPAlgorithm = 'SHA1' | 'SHA256' | 'SHA512'
+export type OTPAlgorithm = 'SHA1' | 'SHA256' | 'SHA512';
 
 /**
  * Represents an individual 2FA OTP token entry.
  */
 export interface OTPEntry {
-  id: string
-  issuer: string
-  label: string
-  secret: string
-  type: OTPType
-  algorithm: OTPAlgorithm
-  digits: number
-  period: number // TOTP interval in seconds (default 30)
-  counter?: number // HOTP counter
-  pinned?: boolean
-  tags?: string[]
-  icon?: string
-  createdAt: number
-  updatedAt: number
+  id: string;
+  issuer: string;
+  label: string;
+  secret: string;
+  type: OTPType;
+  algorithm: OTPAlgorithm;
+  digits: number;
+  period: number; // TOTP interval in seconds (default 30)
+  counter?: number; // HOTP counter
+  pinned?: boolean;
+  tags?: string[];
+  icon?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 /**
  * Vault grouping or folder category.
  */
 export interface VaultGroup {
-  id: string
-  name: string
-  icon?: string
+  id: string;
+  name: string;
+  icon?: string;
 }
 
 /**
  * General application and vault user preferences.
  */
 export interface VaultSettings {
-  autoLockTimeoutMinutes: number
-  biometricUnlockEnabled: boolean
-  syncProvider: SyncProviderType
-  theme: 'dark' | 'light' | 'system'
+  autoLockTimeoutMinutes: number;
+  biometricUnlockEnabled: boolean;
+  syncProvider: SyncProviderType;
+  theme: 'dark' | 'light' | 'system';
 }
 
-export type SyncProviderType = 'none' | 'local-file' | 'github-gist' | 'air-gap' | 'webdav'
+export type SyncProviderType = 'none' | 'local-file' | 'github-gist' | 'air-gap' | 'webdav';
 
 /**
  * Decrypted in-memory representation of the user vault.
  */
 export interface VaultData {
-  version: number
-  updatedAt: number
-  entries: OTPEntry[]
-  groups: VaultGroup[]
-  settings: VaultSettings
+  version: number;
+  updatedAt: number;
+  entries: OTPEntry[];
+  groups: VaultGroup[];
+  settings: VaultSettings;
 }
 
 /**
  * Key derivation parameters for Argon2id.
  */
 export interface KeyDerivationParams {
-  algorithm: 'Argon2id'
-  iterations: number
-  memoryKiB: number
-  parallelism: number
-  salt: string // Base64 or hex encoded
+  algorithm: 'Argon2id';
+  iterations: number;
+  memoryKiB: number;
+  parallelism: number;
+  salt: string; // Base64 or hex encoded
 }
 
 /**
  * Encrypted payload envelope stored locally or synced remotely.
  */
 export interface EncryptedVaultPayload {
-  format: 'vault2fa-v1'
-  kdf: KeyDerivationParams
+  format: 'vault2fa-v1';
+  kdf: KeyDerivationParams;
   encryption: {
-    algorithm: 'AES-256-GCM'
-    iv: string // Base64 encoded initialization vector
-    tagLength: number
-  }
-  ciphertext: string // Base64 encoded ciphertext
+    algorithm: 'AES-256-GCM';
+    iv: string; // Base64 encoded initialization vector
+    tagLength: number;
+  };
+  ciphertext: string; // Base64 encoded ciphertext
 }
