@@ -20,6 +20,7 @@ export interface OTPEntry {
   digits: number;
   period: number; // TOTP interval in seconds (default 30)
   counter?: number; // HOTP counter
+  groupId?: string;
   pinned?: boolean;
   tags?: string[];
   icon?: string;
