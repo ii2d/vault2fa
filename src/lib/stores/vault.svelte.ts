@@ -1,7 +1,9 @@
 import { decryptVault, deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
 import { db } from '$lib/core/storage';
+import { mergeVaultData, type MergeResult } from '$lib/core/sync';
 import type {
   EncryptedVaultPayload,
+  KeyDerivationParams,
   OTPEntry,
   VaultData,
   VaultGroup,
@@ -389,6 +391,38 @@ class VaultStore {
     await db.purgeAll();
     this.cachedPayload = null;
     this.status = 'uninitialized';
+  }
+
+  /**
+   * Returns current encrypted vault payload.
+   */
+  async getEncryptedPayload(): Promise<EncryptedVaultPayload> {
+    this.ensureUnlocked();
+    if (this.cachedPayload) return this.cachedPayload;
+    const payload = await db.loadEncryptedVault();
+    if (!payload) throw new Error('No vault found');
+    this.cachedPayload = payload;
+    return payload;
+  }
+
+  /**
+   * Merges remote decrypted vault data into current vault and persists if changed.
+   */
+  async mergeRemoteData(remoteData: VaultData): Promise<MergeResult> {
+    this.ensureUnlocked();
+    const result = mergeVaultData(this.data!, remoteData);
+    if (result.hasChanges) {
+      await this.persistData(result.merged);
+    }
+    return result;
+  }
+
+  /**
+   * Returns KDF parameters if unlocked.
+   */
+  getKdfParams(): KeyDerivationParams {
+    this.ensureUnlocked();
+    return this.cachedPayload!.kdf;
   }
 
   private ensureUnlocked(): void {
