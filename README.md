@@ -2,21 +2,34 @@
 
 > A modern, zero-backend, local-first 2FA/TOTP authenticator PWA built with Svelte 5, hardware-backed security, WebAssembly encryption, and decentralized sync options.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](package.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5.0-orange?logo=svelte)](https://svelte.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![PWA Ready](https://img.shields.io/badge/PWA-Offline%20First-green?logo=pwa)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
-[![Zero Backend](https://img.shields.io/badge/Architecture-100%25%20Serverless-purple)](<>)
+[![PWA Ready](https://img.shields.io/badge/PWA-Offline%20First-emerald?logo=pwa)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
+[![Zero Backend](https://img.shields.io/badge/Architecture-100%25%20Client--Side-purple)](<>)
 
 🌐 **Live Application**: [https://2fa.ii2d.com](https://2fa.ii2d.com)
 
 ---
 
-## 🌟 Overview
+## 🌟 Overview & About
 
 `vault2fa` is a privacy-first, zero-knowledge Two-Factor Authentication (2FA) client. Built with **Svelte 5** and compiling down to pure, highly optimized native JavaScript, `vault2fa` provides native-grade responsiveness and sub-second startup times while running entirely inside your browser sandbox as an offline-first Progressive Web App (PWA).
 
-Your secrets **never touch any third-party servers unencrypted**. You retain complete custody of your keys with flexible backup options ranging from local directory binding to GitHub Gist synchronization.
+Your secrets **never touch any third-party servers unencrypted**. You retain complete custody of your keys with flexible backup options ranging from local directory binding to encrypted GitHub Gist synchronization.
+
+### 📋 Technical Specifications (About)
+
+| Attribute                | Specification                                                                    |
+| :----------------------- | :------------------------------------------------------------------------------- |
+| **Version**              | `0.1.0` _(defined in [`package.json`](package.json))_                            |
+| **Key Derivation**       | Argon2id WebAssembly (64 MB memory, 3 iterations, cryptographically random salt) |
+| **Vault Encryption**     | Authenticated AES-256-GCM via native hardware `crypto.subtle` (Web Crypto API)   |
+| **Local Persistence**    | Sandboxed IndexedDB via Dexie.js (zero plaintext disk writes)                    |
+| **Telemetry & Tracking** | **0%** — strictly serverless, zero analytics, zero external network requests     |
+| **Biometric Auth**       | Hardware-backed WebAuthn / Passkey (Touch ID, Face ID, Windows Hello, YubiKey)   |
+| **Target Platforms**     | Mobile (iOS, Android), Desktop (macOS, Windows, Linux) via standalone PWA        |
 
 ---
 
@@ -26,25 +39,27 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
   - Zero Virtual DOM overhead. Svelte 5 Runes provide fine-grained signal reactivity for butter-smooth countdown rings and clock-drift corrections.
   - Featherweight bundle size ensures instant app launch and rapid PWA caching.
 - 🔒 **Zero-Knowledge & End-to-End Encryption (E2EE)**:
-  - Key derivation powered by **Argon2id (WebAssembly)** for high resistance against brute-force and GPU cracking attacks.
+  - Key derivation powered by **Argon2id (WebAssembly)** for maximum resistance against brute-force and GPU cracking attacks.
   - Vault payloads encrypted locally using **AES-256-GCM** via the browser's hardware-accelerated Web Crypto API.
-- 🌐 **100% Client-Side & Zero-Backend**:
-  - Pure static web architecture. Can be hosted for free on GitHub Pages, Cloudflare Pages, or Vercel.
-  - Zero telemetry, zero analytics tracking, and zero central database dependencies.
 - 📱 **PWA & Offline-First**:
   - Operates fully offline without network connectivity.
-  - Installable as a standalone app on desktop (macOS, Windows, Linux) and mobile (iOS, Android).
+  - Installable as a standalone app on desktop (macOS, Windows, Linux) and mobile (iOS, Android) with dedicated installation guides.
+- 📱 **Mobile Optimized UI**:
+  - Compact header with quick-action top bar and full-width search.
+  - Mobile dropdown category selector with hidden scrollbar utilities for seamless navigation.
 - 🔑 **Hardware-Backed Unlock (WebAuthn / Passkey)**:
   - Instant vault unlock using biometric sensors (Touch ID, Face ID, Windows Hello) or FIDO2 hardware security keys (YubiKey).
 - 📁 **Local File System Access API**:
   - Direct bidirectional binding to a local file (`vault.enc`).
-  - Sync across devices seamlessly using your existing iCloud Drive, OneDrive, Syncthing, or Dropbox folders without OAuth configurations.
+  - Sync across devices seamlessly using your existing iCloud Drive, OneDrive, Syncthing, or Dropbox folders without third-party cloud configurations.
 - 🐙 **Encrypted GitHub Gist Sync & QR Pairing**:
   - Optional automatic synchronization to a private GitHub Gist with full Git commit history for effortless version rollbacks.
   - One-click QR code device pairing to effortlessly link secondary devices.
 - 🔄 **Wide Ecosystem Compatibility**:
   - One-click import from **Google Authenticator** (`otpauth-migration://` QR / Protobuf).
   - Import/Export support for **Aegis Authenticator**, **Bitwarden**, and standard `otpauth://` URIs.
+- 📄 **Emergency Recovery Kit**:
+  - Printable disaster recovery document with QR backup codes and passphrase area.
 
 ---
 
@@ -52,8 +67,8 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 
 ### Phase 1: Core Foundation & Security (MVP)
 
-- [x] Initialize Svelte 5 + Vite + Tailwind CSS + `shadcn-svelte` structure.
-- [x] Implement RFC 6238 TOTP / RFC 4226 HOTP core calculation engine (`otpauth`).
+- [x] Svelte 5 + Vite + Tailwind CSS + shadcn-svelte architecture.
+- [x] RFC 6238 TOTP / RFC 4226 HOTP core calculation engine (`otpauth`).
 - [x] Argon2id WebAssembly key derivation + AES-256-GCM encryption pipeline (`hash-wasm` + Web Crypto API).
 - [x] Local storage persistence with IndexedDB (`dexie.js`).
 - [x] Master password creation, session timer, and vault auto-locking.
@@ -80,20 +95,22 @@ Your secrets **never touch any third-party servers unencrypted**. You retain com
 - [x] Encrypted multi-folder categorization, pinned tokens, and tag search filters.
 - [x] Power-user keyboard shortcuts (`⌘K` / `/` search focus, `⌘N` add token, `Esc` dismiss).
 - [x] Subtle mobile haptic feedback on TOTP token copy (`navigator.vibrate`).
-- [x] Decentralized zero-backend sync architecture via Native File System Access & GitHub Gist E2EE.
+- [x] Standalone PWA install prompts and platform guides (iOS, Android, Desktop).
+- [x] Dedicated Privacy Policy & User Guide modals accessible directly from auth and settings screens.
+- [x] Fully customizable branding via environment variables and GitHub Actions.
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Framework**: [Svelte 5](https://svelte.dev/) + [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Styling & UI**: [Tailwind CSS](https://tailwindcss.com/) + [shadcn-svelte](https://shadcn-svelte.com/)
+- **Styling & UI**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **Reactivity & State**: Svelte 5 Native Runes (`$state`, `$derived`, `.svelte.ts` modules)
 - **Cryptographic Primitives**: Native `crypto.subtle` (AES-256-GCM) & [`hash-wasm`](https://github.com/Daninet/hash-wasm) (Argon2id WASM)
 - **TOTP Engine**: [`otpauth`](https://github.com/hectorm/otpauth)
 - **Local Storage**: IndexedDB via [`dexie`](https://dexie.org/)
-- **PWA Engine**: [`@vite-pwa/svelte`](https://vite-pwa-org.netlify.app/)
-- **QR & Camera**: [`@zxing/browser`](https://github.com/zxing-js/browser) + [`qrcode`](https://github.com/soldair/node-qrcode)
+- **PWA Engine**: [`vite-plugin-pwa`](https://vite-pwa-org.netlify.app/)
+- **QR & Camera**: [`@zxing/browser`](https://github.com/zxing-js/browser)
 
 ---
 
@@ -123,7 +140,7 @@ pnpm run dev
 
 ### ⚙️ Custom Branding & Configuration
 
-You can customize app branding, titles, domains, and repository links without touching the codebase. Copy `.env.example` to `.env` and set your preferred values:
+You can customize app branding, titles, domains, and repository links without modifying the source code. Copy `.env.example` to `.env` and set your preferred values:
 
 ```bash
 # Application Branding
@@ -186,7 +203,7 @@ Because `vault2fa` is 100% client-side with no server dependencies, you can depl
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)

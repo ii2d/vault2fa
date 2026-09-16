@@ -1406,7 +1406,7 @@
             <div class="space-y-2 rounded-2xl border border-white/5 bg-zinc-950/60 p-4 text-xs">
               <div class="flex items-center justify-between border-b border-white/5 pb-2">
                 <span class="text-zinc-400">Version</span>
-                <span class="font-mono text-zinc-200">0.2.0 (Phase 2 PWA)</span>
+                <span class="font-mono text-zinc-200">v{APP_CONFIG.version}</span>
               </div>
               <div class="flex items-center justify-between border-b border-white/5 pb-2">
                 <span class="text-zinc-400">Key Derivation</span>

@@ -1,8 +1,7 @@
-/**
- * Application Configuration & Branding
- * Loaded dynamically from Vite environment variables (VITE_APP_*) with safe fallbacks.
- */
+declare const __APP_VERSION__: string | undefined;
+
 export const APP_CONFIG = {
+  version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.1.0',
   name: import.meta.env.VITE_APP_NAME || 'vault2fa',
   title: import.meta.env.VITE_APP_TITLE || 'Zero-Knowledge TOTP Authenticator',
   subtitle: import.meta.env.VITE_APP_SUBTITLE || 'Zero-Knowledge TOTP',

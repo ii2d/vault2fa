@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import packageJson from './package.json' with { type: 'json' };
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -17,6 +18,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: './',
+    define: {
+      __APP_VERSION__: JSON.stringify(packageJson.version),
+    },
     plugins: [
       tailwindcss(),
       svelte(),
