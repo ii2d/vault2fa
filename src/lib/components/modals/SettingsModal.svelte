@@ -1406,7 +1406,19 @@
             <div class="space-y-2 rounded-2xl border border-white/5 bg-zinc-950/60 p-4 text-xs">
               <div class="flex items-center justify-between border-b border-white/5 pb-2">
                 <span class="text-zinc-400">Version</span>
-                <span class="font-mono text-zinc-200">v{APP_CONFIG.version}</span>
+                <span class="font-mono text-zinc-200">{APP_CONFIG.version}</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                <span class="text-zinc-400">Build Time</span>
+                <span class="font-mono text-zinc-300" title={APP_CONFIG.buildTime}>
+                  {new Date(APP_CONFIG.buildTime).toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
               </div>
               <div class="flex items-center justify-between border-b border-white/5 pb-2">
                 <span class="text-zinc-400">Key Derivation</span>
