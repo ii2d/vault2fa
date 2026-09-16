@@ -27,12 +27,13 @@
   import type { EncryptedVaultPayload, VaultData } from '$lib/types';
   import { APP_CONFIG } from '$lib/config';
   import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
-  import SettingsModal from '$lib/components/modals/SettingsModal.svelte';
+  import PrivacyModal from '$lib/components/modals/PrivacyModal.svelte';
+  import UserGuideModal from '$lib/components/modals/UserGuideModal.svelte';
 
   let activeTab = $state<'create' | 'restore'>('create');
   let isInstallGuideOpen = $state(false);
-  let isInfoModalOpen = $state(false);
-  let infoModalTab = $state<'guide' | 'privacy'>('privacy');
+  let isPrivacyModalOpen = $state(false);
+  let isUserGuideOpen = $state(false);
 
   // Create Flow State
   let password = $state('');
@@ -608,10 +609,7 @@
 
     <button
       type="button"
-      onclick={() => {
-        infoModalTab = 'privacy';
-        isInfoModalOpen = true;
-      }}
+      onclick={() => (isPrivacyModalOpen = true)}
       class="flex items-center gap-1 transition hover:text-zinc-300"
     >
       <ShieldCheck class="h-3.5 w-3.5 text-emerald-400" />
@@ -621,10 +619,7 @@
 
     <button
       type="button"
-      onclick={() => {
-        infoModalTab = 'guide';
-        isInfoModalOpen = true;
-      }}
+      onclick={() => (isUserGuideOpen = true)}
       class="flex items-center gap-1 transition hover:text-zinc-300"
     >
       <BookOpen class="h-3.5 w-3.5 text-indigo-400" />
@@ -634,8 +629,5 @@
 </div>
 
 <InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />
-<SettingsModal
-  isOpen={isInfoModalOpen}
-  onClose={() => (isInfoModalOpen = false)}
-  initialTab={infoModalTab}
-/>
+<PrivacyModal isOpen={isPrivacyModalOpen} onClose={() => (isPrivacyModalOpen = false)} />
+<UserGuideModal isOpen={isUserGuideOpen} onClose={() => (isUserGuideOpen = false)} />
