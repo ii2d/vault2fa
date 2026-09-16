@@ -19,7 +19,7 @@ function getAppVersion(): string {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const appName = env.VITE_APP_NAME || 'vault2fa';
+  const appName = env.VITE_APP_NAME || 'Vault2FA';
   const appTitle = env.VITE_APP_TITLE || 'Zero-Knowledge TOTP Authenticator';
   const appDesc =
     env.VITE_APP_DESCRIPTION ||

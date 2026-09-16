@@ -41,7 +41,7 @@ jobs:
       - name: Build production bundle
         run: pnpm run build
         env:
-          VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'vault2fa' }}
+          VITE_APP_NAME: ${{ vars.VITE_APP_NAME || 'Vault2FA' }}
           VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE || 'Zero-Knowledge TOTP Authenticator' }}
           VITE_APP_SUBTITLE: ${{ vars.VITE_APP_SUBTITLE || 'Zero-Knowledge TOTP' }}
           VITE_APP_DESCRIPTION: ${{ vars.VITE_APP_DESCRIPTION || 'Privacy-first, zero-knowledge, local-first 2FA/TOTP authenticator PWA' }}

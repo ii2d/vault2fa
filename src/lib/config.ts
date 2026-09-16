@@ -4,7 +4,7 @@ declare const __BUILD_TIME__: string | undefined;
 export const APP_CONFIG = {
   version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.1.0',
   buildTime: typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString(),
-  name: import.meta.env.VITE_APP_NAME || 'vault2fa',
+  name: import.meta.env.VITE_APP_NAME || 'Vault2FA',
   title: import.meta.env.VITE_APP_TITLE || 'Zero-Knowledge TOTP Authenticator',
   subtitle: import.meta.env.VITE_APP_SUBTITLE || 'Zero-Knowledge TOTP',
   description:
