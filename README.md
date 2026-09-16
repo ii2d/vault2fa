@@ -54,7 +54,7 @@ pnpm run dev
 Copy `.env.example` to `.env` to customize branding and links without editing source code:
 
 ```bash
-VITE_APP_NAME="vault2fa"
+VITE_APP_NAME="Vault2FA"
 VITE_APP_TITLE="Zero-Knowledge TOTP Authenticator"
 VITE_APP_DESCRIPTION="Privacy-first 2FA authenticator"
 VITE_APP_URL="https://2fa.ii2d.com"
