@@ -232,7 +232,7 @@
   }
 </script>
 
-<div class="flex min-h-screen items-center justify-center p-4">
+<div class="flex min-h-screen flex-col items-center justify-center p-4">
   <div
     class="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900/90 p-8 shadow-2xl backdrop-blur-xl"
   >
