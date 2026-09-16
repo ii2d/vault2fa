@@ -47,13 +47,13 @@
   <!-- Brand -->
   <div class="flex items-center gap-3">
     <div
-      class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md shadow-indigo-600/30"
+      class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md shadow-indigo-600/30"
     >
       <Shield class="h-5 w-5 text-white" />
     </div>
-    <div>
+    <div class="hidden items-center sm:flex">
       <span class="text-base font-bold tracking-tight text-white">{APP_CONFIG.name}</span>
-      <span class="hidden text-xs text-zinc-500 sm:ml-2 sm:inline">{APP_CONFIG.subtitle}</span>
+      <span class="text-xs text-zinc-500 sm:ml-2">{APP_CONFIG.subtitle}</span>
     </div>
   </div>
 
