@@ -15,6 +15,7 @@
     Download,
     BookOpen,
     ShieldCheck,
+    FolderSync,
   } from '@lucide/svelte';
   import { vault, pwaInstall } from '$lib/stores';
   import {
@@ -23,6 +24,11 @@
     parseUnencryptedBackup,
     type BackupFormat,
   } from '$lib/core/backup';
+  import {
+    isFileSystemAccessSupported,
+    pickLocalVaultFile,
+    readVaultFromFileHandle,
+  } from '$lib/core/sync';
   import { isPlainTextOtpList } from '$lib/core/totp';
   import type { EncryptedVaultPayload, VaultData } from '$lib/types';
   import { APP_CONFIG } from '$lib/config';
@@ -43,6 +49,7 @@
 
   // Restore Flow State
   let fileInputEl = $state<HTMLInputElement | null>(null);
+  let selectedFileHandle = $state<FileSystemFileHandle | null>(null);
   let selectedFileName = $state('');
   let detectedFormat = $state<BackupFormat | null>(null);
   let encryptedPayload = $state.raw<EncryptedVaultPayload | null>(null);
@@ -165,7 +172,28 @@
     }
   }
 
+  async function handlePickVaultFileHandle() {
+    restoreErrorMessage = '';
+    try {
+      const picked = await pickLocalVaultFile();
+      if (!picked) return;
+      selectedFileHandle = picked.handle;
+      selectedFileName = picked.fileName;
+      restorePassword = '';
+      restoreConfirmPassword = '';
+
+      const payload = await readVaultFromFileHandle(picked.handle);
+      detectedFormat = 'vault2fa-encrypted';
+      encryptedPayload = payload;
+      unencryptedVaultData = null;
+    } catch (err: unknown) {
+      resetFileSelection();
+      restoreErrorMessage = (err as Error).message || 'Failed to read vault file.';
+    }
+  }
+
   function resetFileSelection() {
+    selectedFileHandle = null;
     selectedFileName = '';
     detectedFormat = null;
     encryptedPayload = null;
@@ -190,7 +218,11 @@
 
       isRestoring = true;
       try {
-        await vault.restoreAndUnlockFromPayload(encryptedPayload, restorePassword);
+        await vault.restoreAndUnlockFromPayload(
+          encryptedPayload,
+          restorePassword,
+          selectedFileHandle || undefined,
+        );
       } catch (err: unknown) {
         console.error('Failed to restore encrypted vault:', err);
         if ((err as Error)?.name === 'DecryptionError') {
@@ -413,7 +445,7 @@
       <input
         bind:this={fileInputEl}
         type="file"
-        accept=".json,.txt"
+        accept=".vault,.json,.txt"
         onchange={handleFileSelected}
         class="hidden"
       />
@@ -421,6 +453,35 @@
       {#if !detectedFormat}
         <!-- File Upload Area -->
         <div class="space-y-4">
+          {#if isFileSystemAccessSupported()}
+            <button
+              type="button"
+              onclick={handlePickVaultFileHandle}
+              class="group flex w-full items-center gap-3.5 rounded-2xl border border-indigo-500/30 bg-indigo-950/30 p-4 text-left transition hover:border-indigo-500/60 hover:bg-indigo-950/50"
+            >
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400 transition group-hover:scale-105 group-hover:bg-indigo-600/30"
+              >
+                <FolderSync class="h-5 w-5" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 class="text-sm font-semibold text-white">Open & Link .vault File</h3>
+                <p class="text-xs text-indigo-300/80">
+                  Select an existing file for continuous two-way sync
+                </p>
+              </div>
+            </button>
+
+            <div class="relative flex items-center justify-center">
+              <div class="w-full border-t border-white/10"></div>
+              <span
+                class="bg-zinc-900/90 px-3 text-[11px] font-medium tracking-wider text-zinc-500 uppercase"
+                >or upload file</span
+              >
+              <div class="w-full border-t border-white/10"></div>
+            </div>
+          {/if}
+
           <button
             type="button"
             onclick={() => fileInputEl?.click()}
@@ -435,8 +496,9 @@
               Select Backup File
             </h3>
             <p class="mt-1 text-xs text-zinc-400">
-              Supports <span class="font-mono text-zinc-300">.json</span> ({APP_CONFIG.name} encrypted
-              / Aegis) or <span class="font-mono text-zinc-300">.txt</span> URI lists
+              Supports <span class="font-mono text-zinc-300">.vault</span>,
+              <span class="font-mono text-zinc-300">.json</span>
+              ({APP_CONFIG.name} / Aegis) or <span class="font-mono text-zinc-300">.txt</span>
             </p>
           </button>
 
@@ -467,7 +529,16 @@
                 {/if}
               </div>
               <div class="truncate">
-                <p class="truncate text-xs font-semibold text-zinc-200">{selectedFileName}</p>
+                <div class="flex items-center gap-2">
+                  <p class="truncate text-xs font-semibold text-zinc-200">{selectedFileName}</p>
+                  {#if selectedFileHandle}
+                    <span
+                      class="inline-flex items-center rounded-md bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300"
+                    >
+                      Auto-sync
+                    </span>
+                  {/if}
+                </div>
                 <p class="text-[10px] text-zinc-400">
                   {#if detectedFormat === 'vault2fa-encrypted'}
                     Encrypted {APP_CONFIG.name} backup
