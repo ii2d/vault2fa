@@ -85,14 +85,6 @@
         }
       }
       copied = true;
-      if (isPrivacyModeActive) {
-        isRevealed = true;
-        if (revealTimeout) clearTimeout(revealTimeout);
-        const duration = (vault.settings.revealDurationSeconds || 8) * 1000;
-        revealTimeout = setTimeout(() => {
-          isRevealed = false;
-        }, duration);
-      }
       setTimeout(() => (copied = false), 1500);
     } catch {
       // Fallback
@@ -215,29 +207,34 @@
   </div>
 
   <!-- Bottom: OTP Digits + Countdown Ring -->
-  <div class="mt-6 flex items-center justify-between">
+  <div class="mt-6 flex items-center justify-between gap-2">
     <!-- Code display -->
-    <div class="flex items-center gap-2">
+    <div class="flex min-w-0 items-center gap-2">
       {#if isMasked}
         <button
           type="button"
           onclick={handleReveal}
-          class="hover:bg-zinc-850 flex items-center gap-2.5 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-1.5 text-zinc-400 transition hover:border-indigo-500/40 hover:text-zinc-200"
+          class="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-1.5 text-zinc-400 transition hover:border-indigo-500/40 hover:bg-zinc-800/80 hover:text-zinc-200"
           title="Click to reveal code for {vault.settings.revealDurationSeconds || 8}s"
         >
-          <span class="font-mono text-xl tracking-[0.25em] text-zinc-500 sm:text-2xl">••••••</span>
-          <Eye class="h-4 w-4 text-indigo-400" />
+          <span
+            class="font-mono text-xl tracking-[0.2em] whitespace-nowrap text-zinc-500 sm:text-2xl"
+            >••••••</span
+          >
+          <Eye class="h-4 w-4 shrink-0 text-indigo-400" />
         </button>
       {:else}
-        <div class="flex items-baseline gap-2">
-          <span class="font-mono text-2xl font-bold tracking-wider text-zinc-100 sm:text-3xl">
+        <div class="flex min-w-0 items-center gap-2">
+          <span
+            class="font-mono text-2xl font-bold tracking-wider whitespace-nowrap text-zinc-100 sm:text-3xl"
+          >
             {formattedToken}
           </span>
           {#if isPrivacyModeActive}
             <button
               type="button"
               onclick={handleHide}
-              class="rounded-lg p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
+              class="shrink-0 rounded-lg p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
               title="Hide code"
             >
               <EyeOff class="h-3.5 w-3.5" />
@@ -245,10 +242,13 @@
           {/if}
         </div>
       {/if}
+    </div>
 
+    <!-- Right: Copy / Copied badge + Countdown Ring -->
+    <div class="flex shrink-0 items-center gap-2">
       {#if copied}
         <span
-          class="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400"
+          class="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-emerald-400"
         >
           <Check class="h-3 w-3" />
           Copied
@@ -267,36 +267,36 @@
           <Copy class="h-4 w-4" />
         </button>
       {/if}
-    </div>
 
-    <!-- Countdown Ring (TOTP) or HOTP counter badge -->
-    {#if entry.type === 'totp'}
-      <div class="relative flex items-center justify-center">
-        <svg class="h-9 w-9 -rotate-90 transform">
-          <!-- Background track -->
-          <circle cx="18" cy="18" r={radius} stroke-width="3" class="fill-none stroke-zinc-800" />
-          <!-- Animated remaining progress -->
-          <circle
-            cx="18"
-            cy="18"
-            r={radius}
-            stroke-width="3"
-            stroke-linecap="round"
-            class="fill-none transition-all duration-1000 {ringColor}"
-            style="stroke-dasharray: {circumference}; stroke-dashoffset: {strokeDashoffset};"
-          />
-        </svg>
-        <span class="absolute text-[10px] font-bold {ringColor}">
-          {remaining.seconds}
+      <!-- Countdown Ring (TOTP) or HOTP counter badge -->
+      {#if entry.type === 'totp'}
+        <div class="relative flex shrink-0 items-center justify-center">
+          <svg class="h-9 w-9 -rotate-90 transform">
+            <!-- Background track -->
+            <circle cx="18" cy="18" r={radius} stroke-width="3" class="fill-none stroke-zinc-800" />
+            <!-- Animated remaining progress -->
+            <circle
+              cx="18"
+              cy="18"
+              r={radius}
+              stroke-width="3"
+              stroke-linecap="round"
+              class="fill-none transition-all duration-1000 {ringColor}"
+              style="stroke-dasharray: {circumference}; stroke-dashoffset: {strokeDashoffset};"
+            />
+          </svg>
+          <span class="absolute text-[10px] font-bold {ringColor}">
+            {remaining.seconds}
+          </span>
+        </div>
+      {:else}
+        <span
+          class="shrink-0 rounded-lg border border-white/10 bg-zinc-800/80 px-2 py-1 font-mono text-xs text-zinc-400"
+        >
+          C: {entry.counter ?? 0}
         </span>
-      </div>
-    {:else}
-      <span
-        class="rounded-lg border border-white/10 bg-zinc-800/80 px-2 py-1 font-mono text-xs text-zinc-400"
-      >
-        C: {entry.counter ?? 0}
-      </span>
-    {/if}
+      {/if}
+    </div>
   </div>
 
   <!-- Group badge (if assigned) -->
