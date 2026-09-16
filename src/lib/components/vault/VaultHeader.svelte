@@ -10,6 +10,8 @@
     Cloud,
     RefreshCw,
     Download,
+    Eye,
+    EyeOff,
   } from '@lucide/svelte';
   import { vault, pwaInstall } from '$lib/stores';
   import { APP_CONFIG } from '$lib/config';
@@ -135,6 +137,29 @@
         <span>Install App</span>
       </button>
     {/if}
+
+    <!-- Privacy Mode Quick Toggle Button -->
+    <button
+      type="button"
+      onclick={() =>
+        vault.updateSettings({
+          hideCodesByDefault: !(vault.settings.hideCodesByDefault ?? true),
+        })}
+      class="flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+      title={(vault.settings.hideCodesByDefault ?? true)
+        ? 'Privacy Mode is ON (Codes masked). Click to show all codes.'
+        : 'Privacy Mode is OFF (Codes visible). Click to mask all codes.'}
+      aria-label="Toggle Privacy Mode"
+    >
+      {#if vault.settings.hideCodesByDefault ?? true}
+        <EyeOff class="h-3.5 w-3.5 text-indigo-400" />
+      {:else}
+        <Eye class="h-3.5 w-3.5 text-zinc-400" />
+      {/if}
+      <span class="hidden md:inline">
+        {(vault.settings.hideCodesByDefault ?? true) ? 'Masked' : 'Visible'}
+      </span>
+    </button>
 
     <!-- Settings Button -->
     <button

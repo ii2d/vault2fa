@@ -61,6 +61,8 @@ export interface LocalFileSyncConfig {
 export interface VaultSettings {
   autoLockTimeoutMinutes: number;
   biometricUnlockEnabled: boolean;
+  hideCodesByDefault?: boolean;
+  revealDurationSeconds?: number;
   syncProvider: SyncProviderType;
   theme: 'dark' | 'light' | 'system';
   gistSync?: GistSyncConfig;

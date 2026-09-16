@@ -196,6 +196,15 @@
     await vault.updateSettings({ autoLockTimeoutMinutes: minutes });
   }
 
+  async function handleToggleHideCodes() {
+    const current = vault.settings.hideCodesByDefault ?? true;
+    await vault.updateSettings({ hideCodesByDefault: !current });
+  }
+
+  async function handleRevealDurationChange(seconds: number) {
+    await vault.updateSettings({ revealDurationSeconds: seconds });
+  }
+
   async function handleChangePassword(e: SubmitEvent) {
     e.preventDefault();
     passwordMessage = null;
@@ -739,6 +748,68 @@
                     : 'text-rose-400'}"
                 >
                   {biometricsMessage.text}
+                </div>
+              {/if}
+            </div>
+
+            <!-- Privacy Mode (Shoulder-Surfing Protection) -->
+            <div class="space-y-3 rounded-2xl border border-white/5 bg-zinc-950/60 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400"
+                  >
+                    {#if vault.settings.hideCodesByDefault ?? true}
+                      <EyeOff class="h-4 w-4" />
+                    {:else}
+                      <Eye class="h-4 w-4" />
+                    {/if}
+                  </div>
+                  <div>
+                    <h3 class="text-xs font-bold text-white">Privacy Mode</h3>
+                    <p class="text-[11px] text-zinc-400">
+                      Mask 2FA codes until tapped to protect against shoulder surfing
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onclick={handleToggleHideCodes}
+                  aria-label="Toggle Privacy Mode"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none {(vault
+                    .settings.hideCodesByDefault ?? true)
+                    ? 'bg-indigo-600'
+                    : 'bg-zinc-800'}"
+                >
+                  <span
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {(vault
+                      .settings.hideCodesByDefault ?? true)
+                      ? 'translate-x-5'
+                      : 'translate-x-0'}"
+                  ></span>
+                </button>
+              </div>
+
+              {#if vault.settings.hideCodesByDefault ?? true}
+                <div class="border-t border-white/5 pt-3">
+                  <span class="mb-2 block text-[11px] font-medium text-zinc-400">
+                    Auto-Hide Timeout after Reveal
+                  </span>
+                  <div class="grid grid-cols-4 gap-2">
+                    {#each [5, 8, 15, 30] as sec (sec)}
+                      <button
+                        type="button"
+                        onclick={() => handleRevealDurationChange(sec)}
+                        class="rounded-xl border py-1.5 text-xs font-medium transition {(vault
+                          .settings.revealDurationSeconds ?? 8) === sec
+                          ? 'border-indigo-500 bg-indigo-500/10 font-semibold text-indigo-400'
+                          : 'border-white/5 bg-zinc-900/60 text-zinc-400 hover:text-white'}"
+                      >
+                        {sec}s
+                      </button>
+                    {/each}
+                  </div>
                 </div>
               {/if}
             </div>
