@@ -1,7 +1,19 @@
 <script lang="ts">
-  import { Shield, Lock, Plus, Search, Clock, X, Settings, Cloud, RefreshCw } from '@lucide/svelte';
-  import { vault } from '$lib/stores';
+  import {
+    Shield,
+    Lock,
+    Plus,
+    Search,
+    Clock,
+    X,
+    Settings,
+    Cloud,
+    RefreshCw,
+    Download,
+  } from '@lucide/svelte';
+  import { vault, pwaInstall } from '$lib/stores';
   import { APP_CONFIG } from '$lib/config';
+  import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
 
   let {
     onOpenAddModal,
@@ -10,6 +22,16 @@
     onOpenAddModal: () => void;
     onOpenSettingsModal: () => void;
   } = $props();
+
+  let isInstallGuideOpen = $state(false);
+
+  async function handleInstallClick() {
+    if (pwaInstall.canInstall) {
+      await pwaInstall.promptInstall();
+    } else {
+      isInstallGuideOpen = true;
+    }
+  }
 
   const formattedCountdown = $derived.by(() => {
     const totalSec = vault.autoLockSecondsLeft;
@@ -101,6 +123,19 @@
       <span class="font-mono font-medium text-zinc-200">{formattedCountdown}</span>
     </div>
 
+    <!-- Install App Button (if not already standalone) -->
+    {#if !pwaInstall.isInstalled}
+      <button
+        type="button"
+        onclick={handleInstallClick}
+        class="hidden items-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-600/20 px-3 py-2 text-xs font-semibold text-indigo-300 transition hover:bg-indigo-600/30 hover:text-white sm:flex"
+        title="Install {APP_CONFIG.name} as a standalone application"
+      >
+        <Download class="h-3.5 w-3.5" />
+        <span>Install App</span>
+      </button>
+    {/if}
+
     <!-- Settings Button -->
     <button
       type="button"
@@ -134,3 +169,5 @@
     </button>
   </div>
 </header>
+
+<InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />

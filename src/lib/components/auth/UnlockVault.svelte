@@ -13,8 +13,11 @@
     Trash2,
     X,
     Check,
+    Download,
+    BookOpen,
+    ShieldCheck,
   } from '@lucide/svelte';
-  import { vault } from '$lib/stores';
+  import { vault, pwaInstall } from '$lib/stores';
   import {
     authenticateWithBiometrics,
     hasBiometricCredential,
@@ -29,12 +32,17 @@
   import { isPlainTextOtpList } from '$lib/core/totp';
   import type { EncryptedVaultPayload, VaultData } from '$lib/types';
   import { APP_CONFIG } from '$lib/config';
+  import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
+  import SettingsModal from '$lib/components/modals/SettingsModal.svelte';
 
   let password = $state('');
   let showPassword = $state(false);
   let errorMessage = $state('');
   let isUnlocking = $state(false);
   let canUseBiometrics = $state(false);
+  let isInstallGuideOpen = $state(false);
+  let isInfoModalOpen = $state(false);
+  let infoModalTab = $state<'guide' | 'privacy'>('privacy');
 
   // Recovery / Restore Modal State
   let showRecoveryModal = $state(false);
@@ -361,6 +369,46 @@
       </button>
     </div>
   </div>
+
+  <!-- Footer Navigation Links -->
+  <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs text-zinc-500">
+    {#if !pwaInstall.isInstalled}
+      <button
+        type="button"
+        onclick={() => (isInstallGuideOpen = true)}
+        class="flex items-center gap-1 transition hover:text-zinc-300"
+      >
+        <Download class="h-3.5 w-3.5 text-indigo-400" />
+        <span>Install App</span>
+      </button>
+      <span>•</span>
+    {/if}
+
+    <button
+      type="button"
+      onclick={() => {
+        infoModalTab = 'privacy';
+        isInfoModalOpen = true;
+      }}
+      class="flex items-center gap-1 transition hover:text-zinc-300"
+    >
+      <ShieldCheck class="h-3.5 w-3.5 text-emerald-400" />
+      <span>Privacy Manifesto</span>
+    </button>
+    <span>•</span>
+
+    <button
+      type="button"
+      onclick={() => {
+        infoModalTab = 'guide';
+        isInfoModalOpen = true;
+      }}
+      class="flex items-center gap-1 transition hover:text-zinc-300"
+    >
+      <BookOpen class="h-3.5 w-3.5 text-indigo-400" />
+      <span>User Guide</span>
+    </button>
+  </div>
 </div>
 
 <!-- Restore & Recovery Modal -->
@@ -600,3 +648,10 @@
     </div>
   </div>
 {/if}
+
+<InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />
+<SettingsModal
+  isOpen={isInfoModalOpen}
+  onClose={() => (isInfoModalOpen = false)}
+  initialTab={infoModalTab}
+/>

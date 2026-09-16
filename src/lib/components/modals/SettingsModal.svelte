@@ -25,8 +25,12 @@
     Camera,
     ShieldAlert,
     Printer,
+    BookOpen,
+    ShieldCheck,
+    Smartphone,
+    CheckCircle2,
   } from '@lucide/svelte';
-  import { vault } from '$lib/stores';
+  import { vault, pwaInstall } from '$lib/stores';
   import {
     isBiometricsAvailable,
     hasBiometricCredential,
@@ -46,6 +50,7 @@
   import { isPlainTextOtpList } from '$lib/core/totp';
   import { SyncConfigShareModal, SyncConfigScanModal } from '$lib/components/sync';
   import RecoveryKitModal from './RecoveryKitModal.svelte';
+  import InstallGuideModal from './InstallGuideModal.svelte';
   import { APP_CONFIG } from '$lib/config';
   import {
     isFileSystemAccessSupported,
@@ -57,9 +62,26 @@
   } from '$lib/core/sync';
   import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
-  let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
+  let {
+    isOpen,
+    onClose,
+    initialTab = 'security',
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    initialTab?: 'security' | 'sync' | 'backup' | 'guide' | 'privacy' | 'about';
+  } = $props();
 
-  let activeTab = $state<'security' | 'sync' | 'backup' | 'about'>('security');
+  let activeTab = $state<'security' | 'sync' | 'backup' | 'guide' | 'privacy' | 'about'>(
+    'security',
+  );
+  let isInstallGuideOpen = $state(false);
+
+  $effect(() => {
+    if (isOpen) {
+      activeTab = initialTab;
+    }
+  });
 
   // Biometrics State
   let biometricsSupported = $state(false);
@@ -614,52 +636,76 @@
         </button>
       </div>
 
-      <div class="flex border-b border-white/10 bg-zinc-950/40 p-2">
+      <div class="flex gap-1 overflow-x-auto border-b border-white/10 bg-zinc-950/40 p-1.5">
         <button
           type="button"
           onclick={() => (activeTab = 'security')}
-          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
+          class="flex min-w-[72px] flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition {activeTab ===
           'security'
             ? 'bg-zinc-800 text-white shadow-sm'
             : 'text-zinc-400 hover:text-zinc-200'}"
         >
-          <Lock class="h-3.5 w-3.5 text-indigo-400" />
+          <Lock class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
           <span>Security</span>
         </button>
 
         <button
           type="button"
           onclick={() => (activeTab = 'sync')}
-          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
+          class="flex min-w-[64px] flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition {activeTab ===
           'sync'
             ? 'bg-zinc-800 text-white shadow-sm'
             : 'text-zinc-400 hover:text-zinc-200'}"
         >
-          <Cloud class="h-3.5 w-3.5 text-indigo-400" />
+          <Cloud class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
           <span>Sync</span>
         </button>
 
         <button
           type="button"
           onclick={() => (activeTab = 'backup')}
-          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
+          class="flex min-w-[72px] flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition {activeTab ===
           'backup'
             ? 'bg-zinc-800 text-white shadow-sm'
             : 'text-zinc-400 hover:text-zinc-200'}"
         >
-          <Download class="h-3.5 w-3.5 text-indigo-400" />
+          <Download class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
           <span>Backups</span>
         </button>
 
         <button
           type="button"
+          onclick={() => (activeTab = 'guide')}
+          class="flex min-w-[64px] flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition {activeTab ===
+          'guide'
+            ? 'bg-zinc-800 text-white shadow-sm'
+            : 'text-zinc-400 hover:text-zinc-200'}"
+        >
+          <BookOpen class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+          <span>Guide</span>
+        </button>
+
+        <button
+          type="button"
+          onclick={() => (activeTab = 'privacy')}
+          class="flex min-w-[68px] flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition {activeTab ===
+          'privacy'
+            ? 'bg-zinc-800 text-white shadow-sm'
+            : 'text-zinc-400 hover:text-zinc-200'}"
+        >
+          <ShieldCheck class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+          <span>Privacy</span>
+        </button>
+
+        <button
+          type="button"
           onclick={() => (activeTab = 'about')}
-          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition {activeTab ===
+          class="flex min-w-[64px] flex-1 items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition {activeTab ===
           'about'
             ? 'bg-zinc-800 text-white shadow-sm'
             : 'text-zinc-400 hover:text-zinc-200'}"
         >
-          <Info class="h-3.5 w-3.5 text-indigo-400" />
+          <Info class="h-3.5 w-3.5 shrink-0 text-indigo-400" />
           <span>About</span>
         </button>
       </div>
@@ -1329,6 +1375,165 @@
             </div>
           </div>
 
+          <!-- GUIDE TAB -->
+        {:else if activeTab === 'guide'}
+          <div class="space-y-4">
+            <!-- App Installation & Offline Access -->
+            <div class="space-y-3 rounded-2xl border border-white/5 bg-zinc-950/60 p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 text-xs font-semibold text-zinc-200">
+                  <Smartphone class="h-4 w-4 text-indigo-400" />
+                  <span>Install as Standalone App</span>
+                </div>
+                {#if pwaInstall.isInstalled}
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400"
+                  >
+                    <CheckCircle2 class="h-3 w-3" /> Installed
+                  </span>
+                {/if}
+              </div>
+
+              <p class="text-xs leading-relaxed text-zinc-400">
+                {APP_CONFIG.name} is a Progressive Web App (PWA) that installs on iOS, Android, macOS,
+                and Windows. Once installed, it runs fullscreen, stores your vault locally, and operates
+                100% offline.
+              </p>
+
+              <div class="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onclick={() => (isInstallGuideOpen = true)}
+                  class="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+                >
+                  <Download class="h-3.5 w-3.5" />
+                  <span>View Installation Steps</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Hardware & Biometric Unlock -->
+            <div class="space-y-2 rounded-2xl border border-white/5 bg-zinc-950/60 p-4 text-xs">
+              <div class="flex items-center gap-2 font-semibold text-zinc-200">
+                <Fingerprint class="h-4 w-4 text-indigo-400" />
+                <span>Biometric & Hardware Unlock</span>
+              </div>
+              <p class="leading-relaxed text-zinc-400">
+                Unlock instantly using Touch ID, Face ID, Windows Hello, or FIDO2 hardware keys
+                (YubiKey). Your master password remains the root of trust, while biometrics securely
+                derives a temporary session token in your hardware enclave.
+              </p>
+            </div>
+
+            <!-- Multi-Device Sync Options -->
+            <div class="space-y-2 rounded-2xl border border-white/5 bg-zinc-950/60 p-4 text-xs">
+              <div class="flex items-center gap-2 font-semibold text-zinc-200">
+                <Cloud class="h-4 w-4 text-indigo-400" />
+                <span>Decentralized Multi-Device Sync</span>
+              </div>
+              <ul class="list-inside list-disc space-y-1.5 text-zinc-400">
+                <li>
+                  <strong class="text-zinc-300">GitHub Gist E2EE:</strong> Syncs encrypted ciphertext
+                  to a private Gist. Pair other devices with a one-click QR code scan.
+                </li>
+                <li>
+                  <strong class="text-zinc-300">Local File Binding:</strong> Saves
+                  <code class="font-mono text-zinc-200">vault.enc</code> directly into iCloud Drive, Dropbox,
+                  OneDrive, or Syncthing.
+                </li>
+              </ul>
+            </div>
+
+            <!-- Emergency Recovery Kit -->
+            <div class="space-y-2 rounded-2xl border border-white/5 bg-zinc-950/60 p-4 text-xs">
+              <div class="flex items-center gap-2 font-semibold text-zinc-200">
+                <Printer class="h-4 w-4 text-indigo-400" />
+                <span>Emergency Recovery Kit</span>
+              </div>
+              <p class="leading-relaxed text-zinc-400">
+                Generate and print a physical disaster recovery kit containing your vault
+                restoration QR code and a space for your handwritten master password. Store it in a
+                secure safe.
+              </p>
+              <button
+                type="button"
+                onclick={() => (isRecoveryKitOpen = true)}
+                class="mt-1 flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:bg-zinc-800"
+              >
+                <Printer class="h-3.5 w-3.5 text-zinc-400" />
+                <span>Open Recovery Kit</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PRIVACY TAB -->
+        {:else if activeTab === 'privacy'}
+          <div class="space-y-4">
+            <div
+              class="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4"
+            >
+              <div
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+              >
+                <ShieldCheck class="h-6 w-6" />
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">Privacy & Security Manifesto</h3>
+                <p class="text-xs text-zinc-400">Zero-Backend, Zero-Knowledge, Local-First</p>
+              </div>
+            </div>
+
+            <div class="space-y-3 rounded-2xl border border-white/5 bg-zinc-950/60 p-4 text-xs">
+              <div class="space-y-1">
+                <h4 class="flex items-center gap-1.5 font-semibold text-zinc-200">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                  0% Serverless / No Tracking
+                </h4>
+                <p class="leading-relaxed text-zinc-400">
+                  {APP_CONFIG.name} has no backend servers, no analytics scripts, no advertising SDKs,
+                  and uses no cookies. Your IP address and usage patterns are never tracked or logged.
+                </p>
+              </div>
+
+              <div class="space-y-1 border-t border-white/5 pt-3">
+                <h4 class="flex items-center gap-1.5 font-semibold text-zinc-200">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                  100% Client-Side End-to-End Cryptography
+                </h4>
+                <p class="leading-relaxed text-zinc-400">
+                  Keys are derived on your device using <strong>Argon2id WASM</strong> (64 MB
+                  memory, 3 iterations) to resist brute-force attacks. Vault payloads are encrypted
+                  with <strong>AES-256-GCM</strong> using the browser's hardware-accelerated Web Crypto
+                  API.
+                </p>
+              </div>
+
+              <div class="space-y-1 border-t border-white/5 pt-3">
+                <h4 class="flex items-center gap-1.5 font-semibold text-zinc-200">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                  Local IndexedDB Sandboxing
+                </h4>
+                <p class="leading-relaxed text-zinc-400">
+                  Your encrypted secrets remain confined to your browser's origin-isolated IndexedDB
+                  sandbox. When remote sync is enabled, only encrypted ciphertext blobs are
+                  transmitted; third parties (like GitHub) never see your keys.
+                </p>
+              </div>
+
+              <div class="space-y-1 border-t border-white/5 pt-3">
+                <h4 class="flex items-center gap-1.5 font-semibold text-zinc-200">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                  Auditable Open Source
+                </h4>
+                <p class="leading-relaxed text-zinc-400">
+                  The complete source code is public, MIT-licensed, and independently auditable. You
+                  can clone the repository and run it completely offline or self-host your own
+                  instance.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- ABOUT TAB -->
         {:else}
           <div class="space-y-4">
@@ -1406,6 +1611,8 @@
 />
 
 <RecoveryKitModal isOpen={isRecoveryKitOpen} onClose={() => (isRecoveryKitOpen = false)} />
+
+<InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />
 
 <!-- Encrypted Backup Password Prompt Dialog -->
 {#if showBackupPasswordModal}
