@@ -25,6 +25,8 @@
     Camera,
     ShieldAlert,
     Printer,
+    BookOpen,
+    ShieldCheck,
   } from '@lucide/svelte';
   import { vault } from '$lib/stores';
   import {
@@ -46,6 +48,9 @@
   import { isPlainTextOtpList } from '$lib/core/totp';
   import { SyncConfigShareModal, SyncConfigScanModal } from '$lib/components/sync';
   import RecoveryKitModal from './RecoveryKitModal.svelte';
+  import InstallGuideModal from './InstallGuideModal.svelte';
+  import PrivacyModal from './PrivacyModal.svelte';
+  import UserGuideModal from './UserGuideModal.svelte';
   import { APP_CONFIG } from '$lib/config';
   import {
     isFileSystemAccessSupported,
@@ -57,9 +62,26 @@
   } from '$lib/core/sync';
   import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
-  let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
+  let {
+    isOpen,
+    onClose,
+    initialTab = 'security',
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    initialTab?: 'security' | 'sync' | 'backup' | 'about';
+  } = $props();
 
   let activeTab = $state<'security' | 'sync' | 'backup' | 'about'>('security');
+  let isInstallGuideOpen = $state(false);
+  let isPrivacyModalOpen = $state(false);
+  let isUserGuideOpen = $state(false);
+
+  $effect(() => {
+    if (isOpen) {
+      activeTab = initialTab;
+    }
+  });
 
   // Biometrics State
   let biometricsSupported = $state(false);
@@ -1346,6 +1368,41 @@
               </div>
             </div>
 
+            <!-- Quick Links to Standalone Guides -->
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onclick={() => (isUserGuideOpen = true)}
+                class="flex items-center gap-2.5 rounded-2xl border border-white/5 bg-zinc-950/60 p-3 text-left transition hover:border-indigo-500/30 hover:bg-zinc-800/80"
+              >
+                <div
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400"
+                >
+                  <BookOpen class="h-4 w-4" />
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-zinc-200">User Guide</p>
+                  <p class="text-[10px] text-zinc-400">Setup & feature guide</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onclick={() => (isPrivacyModalOpen = true)}
+                class="flex items-center gap-2.5 rounded-2xl border border-white/5 bg-zinc-950/60 p-3 text-left transition hover:border-emerald-500/30 hover:bg-zinc-800/80"
+              >
+                <div
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600/20 text-emerald-400"
+                >
+                  <ShieldCheck class="h-4 w-4" />
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-zinc-200">Privacy Manifesto</p>
+                  <p class="text-[10px] text-zinc-400">Zero-backend promise</p>
+                </div>
+              </button>
+            </div>
+
             <div class="space-y-2 rounded-2xl border border-white/5 bg-zinc-950/60 p-4 text-xs">
               <div class="flex items-center justify-between border-b border-white/5 pb-2">
                 <span class="text-zinc-400">Version</span>
@@ -1406,6 +1463,10 @@
 />
 
 <RecoveryKitModal isOpen={isRecoveryKitOpen} onClose={() => (isRecoveryKitOpen = false)} />
+
+<InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />
+<PrivacyModal isOpen={isPrivacyModalOpen} onClose={() => (isPrivacyModalOpen = false)} />
+<UserGuideModal isOpen={isUserGuideOpen} onClose={() => (isUserGuideOpen = false)} />
 
 <!-- Encrypted Backup Password Prompt Dialog -->
 {#if showBackupPasswordModal}
