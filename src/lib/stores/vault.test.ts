@@ -294,10 +294,7 @@ describe('VaultStore group filtering', () => {
     };
 
     const activePayload = await encryptVault(activeData, activeKey, activeKdf);
-    vault.status = 'unlocked';
-    vault.masterKey = activeKey;
-    vault.cachedPayload = activePayload;
-    vault.data = activeData;
+    await vault.restoreAndUnlockFromPayload(activePayload, activePassword);
 
     // 2. Create a remote file payload created on another browser with Salt B
     const remotePassword = 'RemoteVaultPassword2@';
