@@ -19,6 +19,7 @@ import type {
   VaultData,
   VaultGroup,
   VaultSettings,
+  GistSyncConfig,
 } from '$lib/types';
 
 export type VaultStatus = 'loading' | 'uninitialized' | 'locked' | 'unlocked';
@@ -496,6 +497,7 @@ class VaultStore {
     payload: EncryptedVaultPayload,
     masterPassword: string,
     handle?: FileSystemFileHandle,
+    gistConfig?: GistSyncConfig,
   ): Promise<void> {
     if (payload.format !== 'vault2fa-v1' || !payload.ciphertext) {
       throw new Error('Invalid encrypted vault payload format.');
@@ -539,6 +541,12 @@ class VaultStore {
         autoSync: true,
         lastSyncedAt: now,
       };
+    } else if (gistConfig) {
+      normalizedData.settings.syncProvider = 'github-gist';
+      normalizedData.settings.gistSync = {
+        ...gistConfig,
+        lastSyncedAt: now,
+      };
     }
 
     await db.saveEncryptedVault(cleanPayload);
@@ -553,7 +561,7 @@ class VaultStore {
   /**
    * Performs full two-way sync with GitHub Gist.
    */
-  async syncWithGist(): Promise<GistSyncResult> {
+  async syncWithGist(remotePassword?: string): Promise<GistSyncResult> {
     this.ensureUnlocked();
     const gistConfig = this.data!.settings.gistSync;
     if (!gistConfig?.token) {
@@ -570,11 +578,12 @@ class VaultStore {
         this.data!,
         this.masterKey!,
         this.cachedPayload!.kdf,
+        remotePassword,
       );
 
       const now = Date.now();
       const updatedSettings: VaultSettings = {
-        ...this.data!.settings,
+        ...result.syncedVault.settings,
         syncProvider: 'github-gist',
         gistSync: {
           ...gistConfig,
@@ -588,6 +597,16 @@ class VaultStore {
         settings: updatedSettings,
         updatedAt: Math.max(result.syncedVault.updatedAt, now),
       };
+
+      if (result.adoptedKey && result.adoptedKdf) {
+        this.masterKey = result.adoptedKey;
+        this.cachedPayload = {
+          ...this.cachedPayload!,
+          kdf: result.adoptedKdf,
+        };
+        await db.biometrics.clear();
+        finalData.settings.biometricUnlockEnabled = false;
+      }
 
       await this.persistData(finalData);
       this.syncStatus = 'synced';

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { X, Camera, AlertCircle, CheckCircle2 } from '@lucide/svelte';
+  import { X, Camera, AlertCircle, CheckCircle2, ClipboardPaste } from '@lucide/svelte';
   import type { IScannerControls } from '@zxing/browser';
   import type { GistSyncConfig } from '$lib/types';
   import { parseSyncConfigQr } from '$lib/core/sync';
@@ -19,6 +19,42 @@
   let scannerControls = $state<IScannerControls | null>(null);
   let scannerError = $state('');
   let isSuccess = $state(false);
+  let manualUri = $state('');
+  let manualUriError = $state('');
+
+  function applyConfig(config: GistSyncConfig) {
+    isSuccess = true;
+    stopScanner();
+    setTimeout(() => {
+      onScanned(config);
+      onClose();
+    }, 400);
+  }
+
+  function handleManualUri(raw: string) {
+    manualUriError = '';
+    const config = parseSyncConfigQr(raw);
+    if (config) {
+      applyConfig(config);
+    } else {
+      manualUriError = 'Invalid sync URI. Expected format: v2fa-sync://gist?token=...';
+    }
+  }
+
+  async function handlePasteClipboard() {
+    manualUriError = '';
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        manualUri = text;
+        handleManualUri(text);
+      } else {
+        manualUriError = 'Clipboard is empty.';
+      }
+    } catch {
+      manualUriError = 'Clipboard access denied. Please paste directly into the input.';
+    }
+  }
 
   async function startScanner() {
     stopScanner();
@@ -38,12 +74,7 @@
             const rawText = result.getText();
             const config = parseSyncConfigQr(rawText);
             if (config) {
-              isSuccess = true;
-              stopScanner();
-              setTimeout(() => {
-                onScanned(config);
-                onClose();
-              }, 400);
+              applyConfig(config);
             }
           }
           if (error && error.name !== 'NotFoundException') {
@@ -68,6 +99,8 @@
 
   $effect(() => {
     if (isOpen) {
+      manualUri = '';
+      manualUriError = '';
       setTimeout(() => startScanner(), 100);
     } else {
       stopScanner();
@@ -100,10 +133,8 @@
             <Camera class="h-4 w-4" />
           </div>
           <div>
-            <h2 id="scan-config-title" class="text-sm font-semibold text-white">
-              Scan Sync Config QR
-            </h2>
-            <p class="text-[11px] text-zinc-400">Pair Gist sync from another device</p>
+            <h2 id="scan-config-title" class="text-sm font-semibold text-white">Pair Gist Sync</h2>
+            <p class="text-[11px] text-zinc-400">Scan QR or paste pairing config URI</p>
           </div>
         </div>
         <button
@@ -116,25 +147,25 @@
         </button>
       </div>
 
-      <!-- Viewport -->
+      <!-- Viewport / Body -->
       <div class="flex flex-col items-center p-5 text-center">
         {#if scannerError}
           <div
-            class="w-full rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-300"
+            class="w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3.5 text-xs text-amber-300"
           >
-            <AlertCircle class="mx-auto mb-2 h-6 w-6 text-rose-400" />
-            <p class="font-medium">{scannerError}</p>
+            <AlertCircle class="mx-auto mb-1.5 h-5 w-5 text-amber-400" />
+            <p class="text-[11px] leading-tight font-medium">{scannerError}</p>
             <button
               type="button"
               onclick={startScanner}
-              class="mt-3 rounded-xl bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-zinc-700"
+              class="mt-2.5 rounded-lg bg-zinc-800 px-3 py-1 text-[11px] font-medium text-zinc-300 transition hover:bg-zinc-700"
             >
               Retry Camera
             </button>
           </div>
         {:else}
           <div
-            class="relative aspect-square w-full max-w-[260px] overflow-hidden rounded-2xl border-2 border-dashed border-purple-500/40 bg-zinc-950 shadow-inner"
+            class="relative aspect-square w-full max-w-[240px] overflow-hidden rounded-2xl border-2 border-dashed border-purple-500/40 bg-zinc-950 shadow-inner"
           >
             <video bind:this={videoEl} class="h-full w-full object-cover" playsinline muted>
               <track kind="captions" />
@@ -142,7 +173,7 @@
 
             <!-- Crosshair overlay -->
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div class="h-40 w-40 rounded-xl border-2 border-purple-400/60 shadow-lg"></div>
+              <div class="h-36 w-36 rounded-xl border-2 border-purple-400/60 shadow-lg"></div>
             </div>
 
             {#if isSuccess}
@@ -155,10 +186,54 @@
             {/if}
           </div>
 
-          <p class="mt-4 text-xs text-zinc-400">
-            Point camera at the <strong>Sync Config QR code</strong> displayed on your other device.
+          <p class="mt-3 text-xs text-zinc-400">
+            Point camera at the <strong>Sync Config QR code</strong> on your other device.
           </p>
         {/if}
+
+        <!-- Divider -->
+        <div class="my-3.5 flex w-full items-center gap-2">
+          <div class="h-px flex-1 bg-white/10"></div>
+          <span class="text-[10px] font-medium tracking-wider text-zinc-500 uppercase"
+            >or paste Config URI</span
+          >
+          <div class="h-px flex-1 bg-white/10"></div>
+        </div>
+
+        <!-- Manual URI Input & Clipboard Button -->
+        <div class="w-full space-y-2">
+          <div class="flex gap-1.5">
+            <input
+              type="text"
+              bind:value={manualUri}
+              placeholder="v2fa-sync://gist?token=..."
+              oninput={() => (manualUriError = '')}
+              onkeydown={(e) => e.key === 'Enter' && handleManualUri(manualUri)}
+              class="flex-1 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 font-mono text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-purple-500"
+            />
+            <button
+              type="button"
+              onclick={() => handleManualUri(manualUri)}
+              disabled={!manualUri.trim()}
+              class="rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500 disabled:opacity-40"
+            >
+              Apply
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onclick={handlePasteClipboard}
+            class="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-800/80 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-700"
+          >
+            <ClipboardPaste class="h-3.5 w-3.5 text-purple-400" />
+            <span>Paste from Clipboard</span>
+          </button>
+
+          {#if manualUriError}
+            <p class="text-left text-[11px] text-rose-400">{manualUriError}</p>
+          {/if}
+        </div>
 
         <button
           type="button"

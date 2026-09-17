@@ -60,6 +60,8 @@
     uncheckLinkedHandle,
     validateGitHubToken,
     VaultSaltMismatchError,
+    GistSaltMismatchError,
+    parseSyncConfigQr,
   } from '$lib/core/sync';
   import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
@@ -120,8 +122,10 @@
 
   // Salt Mismatch Password Prompt State
   let saltMismatchModalOpen = $state(false);
+  let pendingSyncType = $state<'local-file' | 'github-gist'>('local-file');
   let pendingHandle = $state<FileSystemFileHandle | null>(null);
   let pendingFileName = $state('');
+  let pendingGistId = $state('');
   let pendingFilePassword = $state('');
   let showPendingFilePassword = $state(false);
   let pendingFilePasswordError = $state('');
@@ -418,6 +422,7 @@
       };
     } catch (err: unknown) {
       if (err instanceof VaultSaltMismatchError) {
+        pendingSyncType = 'local-file';
         pendingHandle = err.handle;
         pendingFileName = err.fileName;
         pendingFilePassword = '';
@@ -436,25 +441,36 @@
 
   async function handleResolveSaltMismatch(e: SubmitEvent) {
     e.preventDefault();
-    if (!pendingHandle || !pendingFilePassword) return;
+    if (!pendingFilePassword) return;
 
     isResolvingSaltMismatch = true;
     pendingFilePasswordError = '';
 
     try {
-      const res = await vault.syncWithLocalFile(pendingHandle, pendingFilePassword);
-      localHandle = pendingHandle;
-      localFileMessage = {
-        type: 'success',
-        text: `Linked and merged with "${pendingFileName}"! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
-      };
+      if (pendingSyncType === 'local-file') {
+        if (!pendingHandle) return;
+        const res = await vault.syncWithLocalFile(pendingHandle, pendingFilePassword);
+        localHandle = pendingHandle;
+        localFileMessage = {
+          type: 'success',
+          text: `Linked and merged with "${pendingFileName}"! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
+        };
+      } else {
+        const res = await vault.syncWithGist(pendingFilePassword);
+        gistId = res.gistId;
+        gistMessage = {
+          type: 'success',
+          text: `Connected and merged with GitHub Gist! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
+        };
+      }
       saltMismatchModalOpen = false;
       pendingHandle = null;
       pendingFileName = '';
+      pendingGistId = '';
       pendingFilePassword = '';
     } catch (err: unknown) {
       pendingFilePasswordError =
-        (err as Error).message || 'Failed to decrypt file. Please check password.';
+        (err as Error).message || 'Failed to decrypt. Please check password.';
     } finally {
       isResolvingSaltMismatch = false;
     }
@@ -464,6 +480,7 @@
     saltMismatchModalOpen = false;
     pendingHandle = null;
     pendingFileName = '';
+    pendingGistId = '';
     pendingFilePassword = '';
     pendingFilePasswordError = '';
   }
@@ -522,6 +539,7 @@
       };
     } catch (err: unknown) {
       if (err instanceof VaultSaltMismatchError) {
+        pendingSyncType = 'local-file';
         pendingHandle = err.handle;
         pendingFileName = err.fileName;
         pendingFilePassword = '';
@@ -618,10 +636,18 @@
         text: `Synced with Gist ${res.gistId.slice(0, 8)}... (${res.entriesAdded} added, ${res.entriesUpdated} updated, ${res.entriesDeleted} deleted)`,
       };
     } catch (err: unknown) {
-      gistMessage = {
-        type: 'error',
-        text: (err as Error).message || 'Gist sync failed.',
-      };
+      if (err instanceof GistSaltMismatchError) {
+        pendingSyncType = 'github-gist';
+        pendingGistId = err.gistId;
+        pendingFilePassword = '';
+        pendingFilePasswordError = '';
+        saltMismatchModalOpen = true;
+      } else {
+        gistMessage = {
+          type: 'error',
+          text: (err as Error).message || 'Gist sync failed.',
+        };
+      }
     } finally {
       isSyncingGist = false;
     }
@@ -670,12 +696,31 @@
         text: `Connected to Gist from QR! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
       };
     } catch (err: unknown) {
-      gistMessage = {
-        type: 'error',
-        text: (err as Error).message || 'Failed to sync with scanned Gist configuration.',
-      };
+      if (err instanceof GistSaltMismatchError) {
+        pendingSyncType = 'github-gist';
+        pendingGistId = err.gistId;
+        pendingFilePassword = '';
+        pendingFilePasswordError = '';
+        saltMismatchModalOpen = true;
+      } else {
+        gistMessage = {
+          type: 'error',
+          text: (err as Error).message || 'Failed to sync with scanned Gist configuration.',
+        };
+      }
     } finally {
       isSyncingGist = false;
+    }
+  }
+
+  function handleGistTokenInput(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const val = target.value.trim();
+    if (val.startsWith('v2fa-sync://gist')) {
+      const config = parseSyncConfigQr(val);
+      if (config) {
+        handleSyncConfigScanned(config);
+      }
     }
   }
 </script>
@@ -1177,7 +1222,8 @@
                       id="gist-pat-input"
                       type={showGistToken ? 'text' : 'password'}
                       bind:value={gistToken}
-                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      oninput={handleGistTokenInput}
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or paste URI"
                       class="w-full rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2 pr-10 font-mono text-xs text-zinc-200 placeholder-zinc-600 transition outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                     />
                     <button
@@ -1234,10 +1280,10 @@
                     type="button"
                     onclick={() => (isScanConfigOpen = true)}
                     class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold whitespace-nowrap text-zinc-200 transition hover:bg-zinc-800"
-                    title="Scan Config QR from another device"
+                    title="Scan QR or paste pairing config URI"
                   >
                     <Camera class="h-3.5 w-3.5 shrink-0 text-purple-400" />
-                    <span class="whitespace-nowrap">Scan QR</span>
+                    <span class="whitespace-nowrap">Scan / Paste QR</span>
                   </button>
 
                   {#if gistToken.trim()}
@@ -1731,8 +1777,14 @@
             <KeyRound class="h-5 w-5" />
           </div>
           <div>
-            <h2 class="text-base font-bold text-white">Unlock Vault File</h2>
-            <p class="text-xs text-zinc-400">{pendingFileName}</p>
+            <h2 class="text-base font-bold text-white">
+              {pendingSyncType === 'local-file' ? 'Unlock Vault File' : 'Unlock GitHub Gist'}
+            </h2>
+            <p class="text-xs text-zinc-400">
+              {pendingSyncType === 'local-file'
+                ? pendingFileName
+                : `Gist ${pendingGistId.slice(0, 8)}...`}
+            </p>
           </div>
         </div>
         <button
@@ -1748,8 +1800,9 @@
       <div
         class="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-300"
       >
-        This file was created with different security credentials (salt). Enter its master password
-        to unlock, merge accounts, and adopt shared sync credentials.
+        {pendingSyncType === 'local-file'
+          ? 'This file was created with different security credentials (salt). Enter its master password to unlock, merge accounts, and adopt shared sync credentials.'
+          : 'This Gist was created with different security credentials (salt). Enter its master password to unlock, merge accounts, and adopt shared sync credentials.'}
       </div>
 
       <form onsubmit={handleResolveSaltMismatch} class="mt-4 space-y-4">
@@ -1767,7 +1820,7 @@
             for="salt-mismatch-password"
             class="mb-1.5 block text-xs font-semibold text-zinc-300"
           >
-            File Master Password
+            {pendingSyncType === 'local-file' ? 'File Master Password' : 'Gist Master Password'}
           </label>
           <div class="relative">
             <input
@@ -1775,7 +1828,9 @@
               type={showPendingFilePassword ? 'text' : 'password'}
               bind:value={pendingFilePassword}
               required
-              placeholder="Enter password for this .vault file..."
+              placeholder={pendingSyncType === 'local-file'
+                ? 'Enter password for this .vault file...'
+                : 'Enter password for this GitHub Gist...'}
               autocomplete="current-password"
               class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 pr-10 text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500"
             />
@@ -1793,8 +1848,8 @@
             </button>
           </div>
           <p class="mt-1.5 text-[11px] text-zinc-500">
-            Accounts will be merged safely. Both browsers will use these encryption credentials
-            going forward.
+            Accounts will be merged safely. Both devices will use these encryption credentials going
+            forward.
           </p>
         </div>
 

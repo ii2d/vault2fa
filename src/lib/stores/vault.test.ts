@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { vault } from './vault.svelte';
 import type { OTPEntry, VaultData } from '$lib/types';
 import { deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
-import { VaultSaltMismatchError, getLinkedHandle } from '$lib/core/sync';
+import { VaultSaltMismatchError, GistSaltMismatchError, getLinkedHandle } from '$lib/core/sync';
 
 let mockLinkedHandle: FileSystemFileHandle | null = null;
 vi.mock('$lib/core/sync/drivers/local-file', async (importOriginal) => {
@@ -361,5 +361,152 @@ describe('VaultStore group filtering', () => {
     expect(vault.getKdfParams().salt).toBe(remoteKdf.salt);
     expect(vault.settings.syncProvider).toBe('local-file');
     expect(writtenContent).toContain('vault2fa-v1');
+  });
+
+  it('restores vault and configures GitHub Gist sync', async () => {
+    const masterPassword = 'GistPassword123!';
+    const kdf = generateKdfParams();
+    kdf.iterations = 1;
+    kdf.memoryKiB = 1024;
+    const { keyBytes } = await deriveMasterKey(masterPassword, kdf);
+
+    const testVaultData: VaultData = {
+      version: 1,
+      updatedAt: Date.now(),
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+      groups: [],
+      entries: [],
+    };
+
+    const payload = await encryptVault(testVaultData, keyBytes, kdf);
+
+    await vault.restoreAndUnlockFromPayload(payload, masterPassword, undefined, {
+      token: 'ghp_token_abc',
+      gistId: 'gist_id_123',
+      autoSync: true,
+    });
+
+    expect(vault.status).toBe('unlocked');
+    expect(vault.settings.syncProvider).toBe('github-gist');
+    expect(vault.settings.gistSync?.token).toBe('ghp_token_abc');
+    expect(vault.settings.gistSync?.gistId).toBe('gist_id_123');
+  });
+
+  it('detects salt mismatch in vault.syncWithGist and adopts credentials when password provided', async () => {
+    const activePassword = 'LocalPassword111!';
+    const activeKdf = generateKdfParams();
+    activeKdf.iterations = 1;
+    activeKdf.memoryKiB = 1024;
+    const { keyBytes: activeKey } = await deriveMasterKey(activePassword, activeKdf);
+
+    const activeData: VaultData = {
+      version: 1,
+      updatedAt: 1000,
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'github-gist',
+        gistSync: {
+          token: 'ghp_token_test',
+          gistId: 'gist-remote-id',
+          autoSync: true,
+        },
+        theme: 'dark',
+      },
+      groups: [],
+      entries: [
+        {
+          id: 'local-gist-1',
+          issuer: 'LocalGistAccount',
+          label: 'me@local.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ],
+    };
+
+    const activePayload = await encryptVault(activeData, activeKey, activeKdf);
+    await vault.restoreAndUnlockFromPayload(
+      activePayload,
+      activePassword,
+      undefined,
+      activeData.settings.gistSync,
+    );
+
+    const remotePassword = 'RemoteGistPassword222!';
+    const remoteKdf = generateKdfParams();
+    remoteKdf.iterations = 1;
+    remoteKdf.memoryKiB = 1024;
+    const { keyBytes: remoteKey } = await deriveMasterKey(remotePassword, remoteKdf);
+
+    const remoteData: VaultData = {
+      version: 1,
+      updatedAt: 2000,
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'github-gist',
+        theme: 'dark',
+      },
+      groups: [],
+      entries: [
+        {
+          id: 'remote-gist-1',
+          issuer: 'RemoteGistAccount',
+          label: 'remote@gist.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 2000,
+          updatedAt: 2000,
+        },
+      ],
+    };
+
+    const remotePayload = await encryptVault(remoteData, remoteKey, remoteKdf);
+
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('gists/gist-remote-id')) {
+        if (init?.method === 'PATCH') {
+          return {
+            ok: true,
+            json: async () => ({ id: 'gist-remote-id' }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'gist-remote-id',
+            files: {
+              'vault2fa-encrypted.json': {
+                content: JSON.stringify(remotePayload),
+              },
+            },
+          }),
+        } as Response;
+      }
+      throw new Error(`Unexpected: ${url}`);
+    });
+
+    // 1. Without password, throws GistSaltMismatchError
+    await expect(vault.syncWithGist()).rejects.toThrowError(GistSaltMismatchError);
+
+    // 2. With password, succeeds and adopts remote credentials
+    const result = await vault.syncWithGist(remotePassword);
+    expect(result.entriesAdded).toBe(1);
+    expect(vault.entries.length).toBe(2);
+    expect(vault.getKdfParams().salt).toBe(remoteKdf.salt);
   });
 });

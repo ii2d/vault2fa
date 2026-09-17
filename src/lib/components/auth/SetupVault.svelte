@@ -16,6 +16,8 @@
     BookOpen,
     ShieldCheck,
     FolderSync,
+    Cloud,
+    ClipboardPaste,
   } from '@lucide/svelte';
   import { vault, pwaInstall } from '$lib/stores';
   import {
@@ -28,9 +30,11 @@
     isFileSystemAccessSupported,
     pickLocalVaultFile,
     readVaultFromFileHandle,
+    fetchGistPayload,
+    parseSyncConfigQr,
   } from '$lib/core/sync';
   import { isPlainTextOtpList } from '$lib/core/totp';
-  import type { EncryptedVaultPayload, VaultData } from '$lib/types';
+  import type { EncryptedVaultPayload, VaultData, GistSyncConfig } from '$lib/types';
   import { APP_CONFIG } from '$lib/config';
   import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
   import PrivacyModal from '$lib/components/modals/PrivacyModal.svelte';
@@ -50,10 +54,16 @@
   // Restore Flow State
   let fileInputEl = $state<HTMLInputElement | null>(null);
   let selectedFileHandle = $state<FileSystemFileHandle | null>(null);
+  let selectedGistConfig = $state<GistSyncConfig | null>(null);
   let selectedFileName = $state('');
   let detectedFormat = $state<BackupFormat | null>(null);
   let encryptedPayload = $state.raw<EncryptedVaultPayload | null>(null);
   let unencryptedVaultData = $state.raw<VaultData | null>(null);
+
+  let showGistRestoreForm = $state(false);
+  let gistRestoreToken = $state('');
+  let gistRestoreId = $state('');
+  let isFetchingGist = $state(false);
 
   let restorePassword = $state('');
   let restoreConfirmPassword = $state('');
@@ -192,8 +202,69 @@
     }
   }
 
+  async function handleFetchGist(e: SubmitEvent) {
+    e.preventDefault();
+    if (!gistRestoreToken.trim() || !gistRestoreId.trim()) return;
+
+    restoreErrorMessage = '';
+    isFetchingGist = true;
+
+    try {
+      const payload = await fetchGistPayload(gistRestoreToken.trim(), gistRestoreId.trim());
+      detectedFormat = 'vault2fa-encrypted';
+      encryptedPayload = payload;
+      selectedFileHandle = null;
+      selectedFileName = `GitHub Gist (${gistRestoreId.trim().slice(0, 8)}...)`;
+      selectedGistConfig = {
+        token: gistRestoreToken.trim(),
+        gistId: gistRestoreId.trim(),
+        autoSync: true,
+      };
+      showGistRestoreForm = false;
+    } catch (err: unknown) {
+      restoreErrorMessage = (err as Error).message || 'Failed to fetch GitHub Gist.';
+    } finally {
+      isFetchingGist = false;
+    }
+  }
+
+  function applyGistConfigUri(raw: string): boolean {
+    const config = parseSyncConfigQr(raw);
+    if (config) {
+      gistRestoreToken = config.token;
+      if (config.gistId) {
+        gistRestoreId = config.gistId;
+      }
+      restoreErrorMessage = '';
+      return true;
+    }
+    return false;
+  }
+
+  function handleGistRestoreTokenInput(e: Event) {
+    const val = (e.target as HTMLInputElement).value.trim();
+    if (val.startsWith('v2fa-sync://gist')) {
+      applyGistConfigUri(val);
+    }
+  }
+
+  async function handlePasteGistUri() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && applyGistConfigUri(text.trim())) {
+        restoreErrorMessage = '';
+      } else {
+        restoreErrorMessage = 'Clipboard does not contain a valid v2fa-sync:// pairing URI.';
+      }
+    } catch {
+      restoreErrorMessage =
+        'Unable to access clipboard. Please paste the URI directly into the token field.';
+    }
+  }
+
   function resetFileSelection() {
     selectedFileHandle = null;
+    selectedGistConfig = null;
     selectedFileName = '';
     detectedFormat = null;
     encryptedPayload = null;
@@ -222,6 +293,7 @@
           encryptedPayload,
           restorePassword,
           selectedFileHandle || undefined,
+          selectedGistConfig || undefined,
         );
       } catch (err: unknown) {
         console.error('Failed to restore encrypted vault:', err);
@@ -471,16 +543,117 @@
                 </p>
               </div>
             </button>
-
-            <div class="relative flex items-center justify-center">
-              <div class="w-full border-t border-white/10"></div>
-              <span
-                class="bg-zinc-900/90 px-3 text-[11px] font-medium tracking-wider text-zinc-500 uppercase"
-                >or upload file</span
-              >
-              <div class="w-full border-t border-white/10"></div>
-            </div>
           {/if}
+
+          <!-- GitHub Gist Option -->
+          {#if !showGistRestoreForm}
+            <button
+              type="button"
+              onclick={() => (showGistRestoreForm = true)}
+              class="group flex w-full items-center gap-3.5 rounded-2xl border border-purple-500/30 bg-purple-950/30 p-4 text-left transition hover:border-purple-500/60 hover:bg-purple-950/50"
+            >
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-600/20 text-purple-400 transition group-hover:scale-105 group-hover:bg-purple-600/30"
+              >
+                <Cloud class="h-5 w-5" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 class="text-sm font-semibold text-white">Connect to GitHub Gist</h3>
+                <p class="text-xs text-purple-300/80">
+                  Sync cloud vault using Personal Access Token & Gist ID
+                </p>
+              </div>
+            </button>
+          {:else}
+            <form
+              onsubmit={handleFetchGist}
+              class="space-y-3 rounded-2xl border border-purple-500/30 bg-purple-950/20 p-4 text-left"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <Cloud class="h-4 w-4 text-purple-400" />
+                  <span class="text-xs font-bold text-white">Connect GitHub Gist</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onclick={handlePasteGistUri}
+                    class="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400 transition hover:text-purple-300 hover:underline"
+                    title="Paste copied v2fa-sync:// URI from clipboard"
+                  >
+                    <ClipboardPaste class="h-3 w-3" />
+                    <span>Paste Config URI</span>
+                  </button>
+                  <button
+                    type="button"
+                    onclick={() => (showGistRestoreForm = false)}
+                    class="text-xs text-zinc-400 hover:text-zinc-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  for="gist-restore-token"
+                  class="mb-1 block text-[11px] font-semibold tracking-wider text-zinc-300 uppercase"
+                >
+                  GitHub Token (PAT)
+                </label>
+                <input
+                  id="gist-restore-token"
+                  type="password"
+                  bind:value={gistRestoreToken}
+                  oninput={handleGistRestoreTokenInput}
+                  required
+                  placeholder="ghp_... or paste Config URI"
+                  class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label
+                  for="gist-restore-id"
+                  class="mb-1 block text-[11px] font-semibold tracking-wider text-zinc-300 uppercase"
+                >
+                  Gist ID
+                </label>
+                <input
+                  id="gist-restore-id"
+                  type="text"
+                  bind:value={gistRestoreId}
+                  required
+                  placeholder="e.g. 7f3b892a..."
+                  class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isFetchingGist || !gistRestoreToken || !gistRestoreId}
+                class="flex w-full items-center justify-center gap-1.5 rounded-xl bg-purple-600 py-2.5 text-xs font-semibold text-white transition hover:bg-purple-500 disabled:opacity-50"
+              >
+                {#if isFetchingGist}
+                  <Loader2 class="h-3.5 w-3.5 animate-spin" />
+                  <span>Fetching Gist...</span>
+                {:else}
+                  <Check class="h-3.5 w-3.5" />
+                  <span>Fetch & Unlock Gist</span>
+                {/if}
+              </button>
+            </form>
+          {/if}
+
+          <div class="relative my-2 flex items-center justify-center">
+            <div class="h-px flex-1 bg-white/10"></div>
+            <span
+              class="px-3 text-[11px] font-medium tracking-wider whitespace-nowrap text-zinc-500 uppercase"
+            >
+              or upload backup file
+            </span>
+            <div class="h-px flex-1 bg-white/10"></div>
+          </div>
 
           <button
             type="button"
@@ -536,6 +709,12 @@
                       class="inline-flex items-center rounded-md bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300"
                     >
                       Auto-sync
+                    </span>
+                  {:else if selectedGistConfig}
+                    <span
+                      class="inline-flex items-center rounded-md bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-medium text-purple-300"
+                    >
+                      Gist Sync
                     </span>
                   {/if}
                 </div>
