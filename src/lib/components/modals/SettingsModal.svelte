@@ -61,6 +61,7 @@
     validateGitHubToken,
     VaultSaltMismatchError,
     GistSaltMismatchError,
+    parseSyncConfigQr,
   } from '$lib/core/sync';
   import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
@@ -711,6 +712,17 @@
       isSyncingGist = false;
     }
   }
+
+  function handleGistTokenInput(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const val = target.value.trim();
+    if (val.startsWith('v2fa-sync://gist')) {
+      const config = parseSyncConfigQr(val);
+      if (config) {
+        handleSyncConfigScanned(config);
+      }
+    }
+  }
 </script>
 
 {#if isOpen}
@@ -1210,7 +1222,8 @@
                       id="gist-pat-input"
                       type={showGistToken ? 'text' : 'password'}
                       bind:value={gistToken}
-                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      oninput={handleGistTokenInput}
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or paste URI"
                       class="w-full rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2 pr-10 font-mono text-xs text-zinc-200 placeholder-zinc-600 transition outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                     />
                     <button
@@ -1267,10 +1280,10 @@
                     type="button"
                     onclick={() => (isScanConfigOpen = true)}
                     class="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2 text-xs font-semibold whitespace-nowrap text-zinc-200 transition hover:bg-zinc-800"
-                    title="Scan Config QR from another device"
+                    title="Scan QR or paste pairing config URI"
                   >
                     <Camera class="h-3.5 w-3.5 shrink-0 text-purple-400" />
-                    <span class="whitespace-nowrap">Scan QR</span>
+                    <span class="whitespace-nowrap">Scan / Paste QR</span>
                   </button>
 
                   {#if gistToken.trim()}

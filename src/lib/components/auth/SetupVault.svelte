@@ -17,6 +17,7 @@
     ShieldCheck,
     FolderSync,
     Cloud,
+    ClipboardPaste,
   } from '@lucide/svelte';
   import { vault, pwaInstall } from '$lib/stores';
   import {
@@ -30,6 +31,7 @@
     pickLocalVaultFile,
     readVaultFromFileHandle,
     fetchGistPayload,
+    parseSyncConfigQr,
   } from '$lib/core/sync';
   import { isPlainTextOtpList } from '$lib/core/totp';
   import type { EncryptedVaultPayload, VaultData, GistSyncConfig } from '$lib/types';
@@ -223,6 +225,40 @@
       restoreErrorMessage = (err as Error).message || 'Failed to fetch GitHub Gist.';
     } finally {
       isFetchingGist = false;
+    }
+  }
+
+  function applyGistConfigUri(raw: string): boolean {
+    const config = parseSyncConfigQr(raw);
+    if (config) {
+      gistRestoreToken = config.token;
+      if (config.gistId) {
+        gistRestoreId = config.gistId;
+      }
+      restoreErrorMessage = '';
+      return true;
+    }
+    return false;
+  }
+
+  function handleGistRestoreTokenInput(e: Event) {
+    const val = (e.target as HTMLInputElement).value.trim();
+    if (val.startsWith('v2fa-sync://gist')) {
+      applyGistConfigUri(val);
+    }
+  }
+
+  async function handlePasteGistUri() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && applyGistConfigUri(text.trim())) {
+        restoreErrorMessage = '';
+      } else {
+        restoreErrorMessage = 'Clipboard does not contain a valid v2fa-sync:// pairing URI.';
+      }
+    } catch {
+      restoreErrorMessage =
+        'Unable to access clipboard. Please paste the URI directly into the token field.';
     }
   }
 
@@ -538,13 +574,24 @@
                   <Cloud class="h-4 w-4 text-purple-400" />
                   <span class="text-xs font-bold text-white">Connect GitHub Gist</span>
                 </div>
-                <button
-                  type="button"
-                  onclick={() => (showGistRestoreForm = false)}
-                  class="text-xs text-zinc-400 hover:text-zinc-200"
-                >
-                  Cancel
-                </button>
+                <div class="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onclick={handlePasteGistUri}
+                    class="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400 transition hover:text-purple-300 hover:underline"
+                    title="Paste copied v2fa-sync:// URI from clipboard"
+                  >
+                    <ClipboardPaste class="h-3 w-3" />
+                    <span>Paste Config URI</span>
+                  </button>
+                  <button
+                    type="button"
+                    onclick={() => (showGistRestoreForm = false)}
+                    class="text-xs text-zinc-400 hover:text-zinc-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -558,8 +605,9 @@
                   id="gist-restore-token"
                   type="password"
                   bind:value={gistRestoreToken}
+                  oninput={handleGistRestoreTokenInput}
                   required
-                  placeholder="ghp_..."
+                  placeholder="ghp_... or paste Config URI"
                   class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none focus:border-purple-500"
                 />
               </div>
