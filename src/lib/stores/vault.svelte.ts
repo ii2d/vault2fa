@@ -25,6 +25,8 @@ export type VaultSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   autoLockTimeoutMinutes: 5,
   biometricUnlockEnabled: false,
+  hideCodesByDefault: true,
+  revealDurationSeconds: 8,
   syncProvider: 'none',
   theme: 'dark',
 };

@@ -196,4 +196,15 @@ describe('VaultStore group filtering', () => {
     expect(vault.entries.length).toBe(5);
     expect(vault.groups.some((g) => g.name === 'Finance')).toBe(true);
   });
+
+  it('updates privacy mode settings', async () => {
+    vault.status = 'unlocked';
+    await vault.updateSettings({
+      hideCodesByDefault: false,
+      revealDurationSeconds: 15,
+    });
+
+    expect(vault.settings.hideCodesByDefault).toBe(false);
+    expect(vault.settings.revealDurationSeconds).toBe(15);
+  });
 });
