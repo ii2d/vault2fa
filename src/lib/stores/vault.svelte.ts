@@ -4,11 +4,13 @@ import {
   mergeVaultData,
   type MergeResult,
   getLinkedHandle,
+  storeLinkedHandle,
   writeVaultToFileHandle,
   readVaultFromFileHandle,
   updateGistPayload,
   syncVaultWithGist,
   type GistSyncResult,
+  VaultSaltMismatchError,
 } from '$lib/core/sync';
 import type {
   EncryptedVaultPayload,
@@ -493,6 +495,7 @@ class VaultStore {
   async restoreAndUnlockFromPayload(
     payload: EncryptedVaultPayload,
     masterPassword: string,
+    handle?: FileSystemFileHandle,
   ): Promise<void> {
     if (payload.format !== 'vault2fa-v1' || !payload.ciphertext) {
       throw new Error('Invalid encrypted vault payload format.');
@@ -518,14 +521,25 @@ class VaultStore {
     const { keyBytes } = await deriveMasterKey(masterPassword, cleanPayload.kdf);
     const decryptedData = await decryptVault(cleanPayload, keyBytes);
 
+    const now = Date.now();
     const normalizedData: VaultData = {
       version: decryptedData.version || 1,
-      updatedAt: decryptedData.updatedAt || Date.now(),
+      updatedAt: decryptedData.updatedAt || now,
       entries: decryptedData.entries || [],
       groups: decryptedData.groups || [],
       settings: { ...DEFAULT_VAULT_SETTINGS, ...(decryptedData.settings || {}) },
       tombstones: decryptedData.tombstones || [],
     };
+
+    if (handle) {
+      await storeLinkedHandle(handle);
+      normalizedData.settings.syncProvider = 'local-file';
+      normalizedData.settings.localFileSync = {
+        fileName: handle.name,
+        autoSync: true,
+        lastSyncedAt: now,
+      };
+    }
 
     await db.saveEncryptedVault(cleanPayload);
 
@@ -587,15 +601,48 @@ class VaultStore {
 
   /**
    * Syncs and merges with a local .vault file handle.
+   * If remotePassword is provided or required due to salt mismatch, derives the remote key,
+   * merges vault data, and adopts the remote file's encryption credentials.
    */
-  async syncWithLocalFile(handle: FileSystemFileHandle): Promise<MergeResult> {
+  async syncWithLocalFile(
+    handle: FileSystemFileHandle,
+    remotePassword?: string,
+  ): Promise<MergeResult> {
     this.ensureUnlocked();
     this.syncStatus = 'syncing';
     this.syncError = null;
 
     try {
       const remotePayload = await readVaultFromFileHandle(handle);
-      const remoteData = await decryptVault(remotePayload, this.masterKey!);
+
+      const isSameSalt =
+        this.cachedPayload?.kdf?.salt &&
+        remotePayload.kdf?.salt &&
+        this.cachedPayload.kdf.salt === remotePayload.kdf.salt;
+
+      let remoteData: VaultData;
+      let effectiveMasterKey: Uint8Array;
+      let adoptedKdf: KeyDerivationParams;
+
+      if (isSameSalt && !remotePassword) {
+        try {
+          remoteData = await decryptVault(remotePayload, this.masterKey!);
+          effectiveMasterKey = this.masterKey!;
+          adoptedKdf = this.cachedPayload!.kdf;
+        } catch {
+          throw new VaultSaltMismatchError(handle.name, handle);
+        }
+      } else {
+        if (!remotePassword) {
+          throw new VaultSaltMismatchError(handle.name, handle);
+        }
+
+        const { keyBytes } = await deriveMasterKey(remotePassword, remotePayload.kdf);
+        remoteData = await decryptVault(remotePayload, keyBytes);
+        effectiveMasterKey = keyBytes;
+        adoptedKdf = remotePayload.kdf;
+      }
+
       const mergeResult = mergeVaultData(this.data!, remoteData);
 
       const now = Date.now();
@@ -615,6 +662,20 @@ class VaultStore {
         updatedAt: Math.max(mergeResult.merged.updatedAt, now),
       };
 
+      const keyOrSaltChanged =
+        effectiveMasterKey !== this.masterKey || this.cachedPayload!.kdf.salt !== adoptedKdf.salt;
+
+      if (keyOrSaltChanged) {
+        this.masterKey = effectiveMasterKey;
+        this.cachedPayload = {
+          ...this.cachedPayload!,
+          kdf: adoptedKdf,
+        };
+        await db.biometrics.clear();
+        finalData.settings.biometricUnlockEnabled = false;
+      }
+
+      await storeLinkedHandle(handle);
       await this.persistData(finalData);
 
       if (this.cachedPayload) {
@@ -646,6 +707,7 @@ class VaultStore {
           this.cachedPayload!.kdf,
         );
       }
+      await storeLinkedHandle(handle);
       await writeVaultToFileHandle(handle, this.cachedPayload);
 
       const now = Date.now();

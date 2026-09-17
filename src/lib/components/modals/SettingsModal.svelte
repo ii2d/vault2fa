@@ -59,6 +59,7 @@
     getLinkedHandle,
     uncheckLinkedHandle,
     validateGitHubToken,
+    VaultSaltMismatchError,
   } from '$lib/core/sync';
   import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
@@ -111,11 +112,20 @@
   let backupPasswordError = $state('');
   let showBackupPassword = $state(false);
 
-  // Sync State
+  // Local File Sync State
   let localFileSupported = $state(false);
   let localHandle = $state<FileSystemFileHandle | null>(null);
-  let localFileMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
   let isProcessingLocalFile = $state(false);
+  let localFileMessage = $state<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Salt Mismatch Password Prompt State
+  let saltMismatchModalOpen = $state(false);
+  let pendingHandle = $state<FileSystemFileHandle | null>(null);
+  let pendingFileName = $state('');
+  let pendingFilePassword = $state('');
+  let showPendingFilePassword = $state(false);
+  let pendingFilePasswordError = $state('');
+  let isResolvingSaltMismatch = $state(false);
 
   let gistToken = $state('');
   let gistId = $state('');
@@ -407,13 +417,55 @@
         text: `Linked "${picked.fileName}"! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
       };
     } catch (err: unknown) {
-      localFileMessage = {
-        type: 'error',
-        text: (err as Error).message || 'Failed to link file.',
-      };
+      if (err instanceof VaultSaltMismatchError) {
+        pendingHandle = err.handle;
+        pendingFileName = err.fileName;
+        pendingFilePassword = '';
+        pendingFilePasswordError = '';
+        saltMismatchModalOpen = true;
+      } else {
+        localFileMessage = {
+          type: 'error',
+          text: (err as Error).message || 'Failed to link file.',
+        };
+      }
     } finally {
       isProcessingLocalFile = false;
     }
+  }
+
+  async function handleResolveSaltMismatch(e: SubmitEvent) {
+    e.preventDefault();
+    if (!pendingHandle || !pendingFilePassword) return;
+
+    isResolvingSaltMismatch = true;
+    pendingFilePasswordError = '';
+
+    try {
+      const res = await vault.syncWithLocalFile(pendingHandle, pendingFilePassword);
+      localHandle = pendingHandle;
+      localFileMessage = {
+        type: 'success',
+        text: `Linked and merged with "${pendingFileName}"! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
+      };
+      saltMismatchModalOpen = false;
+      pendingHandle = null;
+      pendingFileName = '';
+      pendingFilePassword = '';
+    } catch (err: unknown) {
+      pendingFilePasswordError =
+        (err as Error).message || 'Failed to decrypt file. Please check password.';
+    } finally {
+      isResolvingSaltMismatch = false;
+    }
+  }
+
+  function closeSaltMismatchModal() {
+    saltMismatchModalOpen = false;
+    pendingHandle = null;
+    pendingFileName = '';
+    pendingFilePassword = '';
+    pendingFilePasswordError = '';
   }
 
   async function handleCreateLocalFile() {
@@ -469,10 +521,18 @@
         text: `Synced with "${localHandle.name}" (${res.entriesAdded} added, ${res.entriesUpdated} updated, ${res.entriesDeleted} deleted).`,
       };
     } catch (err: unknown) {
-      localFileMessage = {
-        type: 'error',
-        text: (err as Error).message || 'Failed to sync with local file.',
-      };
+      if (err instanceof VaultSaltMismatchError) {
+        pendingHandle = err.handle;
+        pendingFileName = err.fileName;
+        pendingFilePassword = '';
+        pendingFilePasswordError = '';
+        saltMismatchModalOpen = true;
+      } else {
+        localFileMessage = {
+          type: 'error',
+          text: (err as Error).message || 'Failed to sync with local file.',
+        };
+      }
     } finally {
       isProcessingLocalFile = false;
     }
@@ -1359,7 +1419,7 @@
               <input
                 bind:this={fileInputEl}
                 type="file"
-                accept=".json,.txt"
+                accept=".vault,.json,.txt"
                 onchange={handleImportFile}
                 class="hidden"
               />
@@ -1652,6 +1712,113 @@
             {:else}
               <Check class="h-3.5 w-3.5" />
               <span>Decrypt & Import</span>
+            {/if}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
+{#if saltMismatchModalOpen}
+  <div class="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-2xl">
+      <div class="flex items-start justify-between">
+        <div class="flex items-center gap-3">
+          <div
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400"
+          >
+            <KeyRound class="h-5 w-5" />
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white">Unlock Vault File</h2>
+            <p class="text-xs text-zinc-400">{pendingFileName}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick={closeSaltMismatchModal}
+          class="rounded-xl p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+          aria-label="Close"
+        >
+          <X class="h-5 w-5" />
+        </button>
+      </div>
+
+      <div
+        class="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-300"
+      >
+        This file was created with different security credentials (salt). Enter its master password
+        to unlock, merge accounts, and adopt shared sync credentials.
+      </div>
+
+      <form onsubmit={handleResolveSaltMismatch} class="mt-4 space-y-4">
+        {#if pendingFilePasswordError}
+          <div
+            class="flex items-start gap-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300"
+          >
+            <AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <span>{pendingFilePasswordError}</span>
+          </div>
+        {/if}
+
+        <div>
+          <label
+            for="salt-mismatch-password"
+            class="mb-1.5 block text-xs font-semibold text-zinc-300"
+          >
+            File Master Password
+          </label>
+          <div class="relative">
+            <input
+              id="salt-mismatch-password"
+              type={showPendingFilePassword ? 'text' : 'password'}
+              bind:value={pendingFilePassword}
+              required
+              placeholder="Enter password for this .vault file..."
+              autocomplete="current-password"
+              class="w-full rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 pr-10 text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onclick={() => (showPendingFilePassword = !showPendingFilePassword)}
+              class="absolute top-2.5 right-3 text-zinc-400 transition hover:text-zinc-200"
+              aria-label={showPendingFilePassword ? 'Hide password' : 'Show password'}
+            >
+              {#if showPendingFilePassword}
+                <EyeOff class="h-4 w-4" />
+              {:else}
+                <Eye class="h-4 w-4" />
+              {/if}
+            </button>
+          </div>
+          <p class="mt-1.5 text-[11px] text-zinc-500">
+            Accounts will be merged safely. Both browsers will use these encryption credentials
+            going forward.
+          </p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2">
+          <button
+            type="button"
+            onclick={closeSaltMismatchModal}
+            disabled={isResolvingSaltMismatch}
+            class="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={isResolvingSaltMismatch || !pendingFilePassword}
+            class="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:opacity-50"
+          >
+            {#if isResolvingSaltMismatch}
+              <Loader2 class="h-3.5 w-3.5 animate-spin" />
+              <span>Verifying & Linking...</span>
+            {:else}
+              <Check class="h-3.5 w-3.5" />
+              <span>Unlock & Link</span>
             {/if}
           </button>
         </div>

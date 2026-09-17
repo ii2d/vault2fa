@@ -451,7 +451,7 @@
         <input
           bind:this={fileInputEl}
           type="file"
-          accept=".json,.txt"
+          accept=".vault,.json,.txt"
           onchange={handleFileSelected}
           class="hidden"
         />
@@ -465,7 +465,7 @@
             >
               <Upload class="h-6 w-6 text-zinc-400 group-hover:text-indigo-400" />
               <h4 class="mt-2 text-xs font-semibold text-zinc-200 group-hover:text-white">
-                Select Backup File (.json / .txt)
+                Select Backup File (.vault / .json / .txt)
               </h4>
               <p class="mt-0.5 text-[11px] text-zinc-400">
                 Restore accounts with your backup's master password
