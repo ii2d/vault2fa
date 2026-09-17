@@ -1,5 +1,6 @@
-import { decryptVault, encryptVault } from '$lib/core/crypto';
+import { decryptVault, deriveMasterKey, encryptVault } from '$lib/core/crypto';
 import { mergeVaultData } from '$lib/core/sync/merge';
+import { GistSaltMismatchError } from '$lib/core/sync/errors';
 import type { EncryptedVaultPayload, KeyDerivationParams, VaultData } from '$lib/types';
 
 const GIST_FILENAME = 'vault2fa-encrypted.json';
@@ -12,6 +13,8 @@ export interface GistSyncResult {
   entriesAdded: number;
   entriesUpdated: number;
   entriesDeleted: number;
+  adoptedKey?: Uint8Array;
+  adoptedKdf?: KeyDerivationParams;
 }
 
 export interface GitHubUser {
@@ -172,6 +175,7 @@ export async function syncVaultWithGist(
   localData: VaultData,
   masterKey: Uint8Array,
   kdfParams: KeyDerivationParams,
+  remotePassword?: string,
 ): Promise<GistSyncResult> {
   const cleanToken = token.trim();
   const cleanGistId = gistId?.trim();
@@ -193,22 +197,37 @@ export async function syncVaultWithGist(
   // Case 2: Existing Gist ID -> Pull, Decrypt, Merge, Push
   const remotePayload = await fetchGistPayload(cleanToken, cleanGistId);
 
+  const isSameSalt =
+    remotePayload.kdf?.salt && kdfParams?.salt && remotePayload.kdf.salt === kdfParams.salt;
+
   let remoteData: VaultData;
-  try {
-    remoteData = await decryptVault(remotePayload, masterKey);
-  } catch (err: unknown) {
-    throw new Error(
-      'Unable to decrypt remote Gist payload. The master password differs or data is corrupted.',
-      { cause: err },
-    );
+  let effectiveMasterKey: Uint8Array;
+  let effectiveKdf: KeyDerivationParams;
+
+  if (isSameSalt && !remotePassword) {
+    try {
+      remoteData = await decryptVault(remotePayload, masterKey);
+      effectiveMasterKey = masterKey;
+      effectiveKdf = kdfParams;
+    } catch {
+      throw new GistSaltMismatchError(cleanGistId, cleanToken);
+    }
+  } else {
+    if (!remotePassword) {
+      throw new GistSaltMismatchError(cleanGistId, cleanToken);
+    }
+
+    const { keyBytes } = await deriveMasterKey(remotePassword, remotePayload.kdf);
+    remoteData = await decryptVault(remotePayload, keyBytes);
+    effectiveMasterKey = keyBytes;
+    effectiveKdf = remotePayload.kdf;
   }
 
   // Merge using LWW and tombstones
   const mergeResult = mergeVaultData(localData, remoteData);
 
-  // If merged vault differs from remote, push updated payload
-  const effectiveKdf = remotePayload.kdf ?? kdfParams;
-  const updatedPayload = await encryptVault(mergeResult.merged, masterKey, effectiveKdf);
+  // If merged vault differs from remote or adopted new credentials, push updated payload
+  const updatedPayload = await encryptVault(mergeResult.merged, effectiveMasterKey, effectiveKdf);
   await updateGistPayload(cleanToken, cleanGistId, updatedPayload);
 
   return {
@@ -218,6 +237,8 @@ export async function syncVaultWithGist(
     entriesAdded: mergeResult.entriesAdded,
     entriesUpdated: mergeResult.entriesUpdated,
     entriesDeleted: mergeResult.entriesDeleted,
+    adoptedKey: effectiveMasterKey !== masterKey ? effectiveMasterKey : undefined,
+    adoptedKdf: effectiveKdf.salt !== kdfParams.salt ? effectiveKdf : undefined,
   };
 }
 

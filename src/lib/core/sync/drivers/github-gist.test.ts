@@ -8,7 +8,8 @@ import {
   encodeSyncConfigQr,
   parseSyncConfigQr,
 } from './github-gist';
-import { encryptVault, generateKdfParams } from '$lib/core/crypto';
+import { encryptVault, generateKdfParams, deriveMasterKey } from '$lib/core/crypto';
+import { GistSaltMismatchError } from '../errors';
 import type { EncryptedVaultPayload, VaultData } from '$lib/types';
 
 describe('GitHub Gist Sync Driver', () => {
@@ -215,5 +216,110 @@ describe('GitHub Gist Sync Driver', () => {
     expect(parsed).toEqual(config);
 
     expect(parseSyncConfigQr('invalid-uri')).toBeNull();
+  });
+
+  it('throws GistSaltMismatchError when salt differs and no remotePassword is provided', async () => {
+    const localKdf = generateKdfParams();
+    localKdf.iterations = 1;
+    localKdf.memoryKiB = 1024;
+
+    const remoteKdf = generateKdfParams();
+    remoteKdf.iterations = 1;
+    remoteKdf.memoryKiB = 1024;
+    const remotePassword = 'RemotePassword999!';
+    const { keyBytes: remoteKey } = await deriveMasterKey(remotePassword, remoteKdf);
+
+    const remotePayload = await encryptVault(mockVault, remoteKey, remoteKdf);
+
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('gists/gist-mismatch')) {
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'gist-mismatch',
+            files: {
+              'vault2fa-encrypted.json': {
+                content: JSON.stringify(remotePayload),
+              },
+            },
+          }),
+        } as Response;
+      }
+      throw new Error(`Unexpected: ${url}`);
+    });
+
+    await expect(
+      syncVaultWithGist('ghp_token', 'gist-mismatch', mockVault, mockMasterKey, localKdf),
+    ).rejects.toThrowError(GistSaltMismatchError);
+  });
+
+  it('reconciles salt mismatch and adopts credentials when remotePassword is provided', async () => {
+    const localKdf = generateKdfParams();
+    localKdf.iterations = 1;
+    localKdf.memoryKiB = 1024;
+
+    const remoteKdf = generateKdfParams();
+    remoteKdf.iterations = 1;
+    remoteKdf.memoryKiB = 1024;
+    const remotePassword = 'RemotePassword999!';
+    const { keyBytes: remoteKey } = await deriveMasterKey(remotePassword, remoteKdf);
+
+    const remoteVault: VaultData = {
+      ...mockVault,
+      entries: [
+        {
+          id: 'token-remote',
+          issuer: 'RemoteCloud',
+          label: 'cloud@domain.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 2000,
+          updatedAt: 2000,
+        },
+      ],
+    };
+    const remotePayload = await encryptVault(remoteVault, remoteKey, remoteKdf);
+
+    let patchedBody = '';
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('gists/gist-mismatch')) {
+        if (init?.method === 'PATCH') {
+          patchedBody = init.body as string;
+          return {
+            ok: true,
+            json: async () => ({ id: 'gist-mismatch' }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            id: 'gist-mismatch',
+            files: {
+              'vault2fa-encrypted.json': {
+                content: JSON.stringify(remotePayload),
+              },
+            },
+          }),
+        } as Response;
+      }
+      throw new Error(`Unexpected: ${url}`);
+    });
+
+    const result = await syncVaultWithGist(
+      'ghp_token',
+      'gist-mismatch',
+      mockVault,
+      mockMasterKey,
+      localKdf,
+      remotePassword,
+    );
+
+    expect(result.syncedVault.entries.length).toBe(2);
+    expect(result.adoptedKey).toEqual(remoteKey);
+    expect(result.adoptedKdf?.salt).toBe(remoteKdf.salt);
+    expect(patchedBody).toContain('vault2fa-v1');
   });
 });
