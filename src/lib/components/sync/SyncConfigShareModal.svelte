@@ -1,6 +1,7 @@
 <script lang="ts">
   import { X, QrCode, Copy, Check, Cloud } from '@lucide/svelte';
-  import { BrowserQRCodeSvgWriter } from '@zxing/library';
+  import { BrowserQRCodeSvgWriter, EncodeHintType } from '@zxing/library';
+  import { SvelteMap } from 'svelte/reactivity';
   import type { GistSyncConfig } from '$lib/types';
   import { encodeSyncConfigQr } from '$lib/core/sync';
 
@@ -24,8 +25,14 @@
     }
     const uri = encodeSyncConfigQr(config);
     const writer = new BrowserQRCodeSvgWriter();
+    const hints = new SvelteMap([[EncodeHintType.MARGIN, 2]]);
     try {
-      const svgEl = writer.write(uri, 260, 260);
+      const svgEl = writer.write(uri, 260, 260, hints);
+      svgEl.setAttribute('viewBox', '0 0 260 260');
+      svgEl.setAttribute('width', '100%');
+      svgEl.setAttribute('height', '100%');
+      svgEl.style.display = 'block';
+      svgEl.style.margin = 'auto';
       qrSvgHtml = svgEl.outerHTML;
     } catch {
       qrSvgHtml = '';
@@ -90,10 +97,12 @@
       <!-- Content -->
       <div class="flex flex-col items-center p-5 text-center">
         <div
-          class="relative flex aspect-square w-full max-w-[260px] items-center justify-center overflow-hidden rounded-2xl bg-white p-3 shadow-inner"
+          class="relative flex aspect-square w-full max-w-[260px] items-center justify-center overflow-hidden rounded-2xl bg-white p-4 shadow-inner"
         >
           {#if qrSvgHtml}
-            <div class="h-full w-full [&_svg]:h-full [&_svg]:w-full">
+            <div
+              class="flex h-full w-full items-center justify-center [&_svg]:m-auto [&_svg]:block [&_svg]:h-full [&_svg]:w-full"
+            >
               <!-- eslint-disable-next-line svelte/no-at-html-tags -->
               {@html qrSvgHtml}
             </div>
