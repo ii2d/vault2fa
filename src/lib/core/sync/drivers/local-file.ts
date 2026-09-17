@@ -52,7 +52,6 @@ export async function pickLocalVaultFile(): Promise<{
     throw new Error('No file selected.');
   }
 
-  await storeLinkedHandle(handle);
   return { handle, fileName: handle.name };
 }
 

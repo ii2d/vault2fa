@@ -1,8 +1,21 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { vault } from './vault.svelte';
 import type { OTPEntry, VaultData } from '$lib/types';
 import { deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
+import { VaultSaltMismatchError, getLinkedHandle } from '$lib/core/sync';
+
+let mockLinkedHandle: FileSystemFileHandle | null = null;
+vi.mock('$lib/core/sync/drivers/local-file', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('$lib/core/sync/drivers/local-file')>();
+  return {
+    ...actual,
+    storeLinkedHandle: vi.fn(async (h: FileSystemFileHandle) => {
+      mockLinkedHandle = h;
+    }),
+    getLinkedHandle: vi.fn(async () => mockLinkedHandle),
+  };
+});
 
 describe('VaultStore group filtering', () => {
   const sampleEntries: OTPEntry[] = [
@@ -206,5 +219,150 @@ describe('VaultStore group filtering', () => {
 
     expect(vault.settings.hideCodesByDefault).toBe(false);
     expect(vault.settings.revealDurationSeconds).toBe(15);
+  });
+
+  it('restores vault and links file handle for auto-sync', async () => {
+    const masterPassword = 'MySecretPassword123!';
+    const kdf = generateKdfParams();
+    kdf.iterations = 1;
+    kdf.memoryKiB = 1024;
+    const { keyBytes } = await deriveMasterKey(masterPassword, kdf);
+
+    const testVaultData: VaultData = {
+      version: 1,
+      updatedAt: Date.now(),
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+      groups: [],
+      entries: [],
+    };
+
+    const payload = await encryptVault(testVaultData, keyBytes, kdf);
+
+    const mockHandle = {
+      name: 'shared.vault',
+      queryPermission: vi.fn().mockResolvedValue('granted'),
+      requestPermission: vi.fn().mockResolvedValue('granted'),
+    } as unknown as FileSystemFileHandle;
+
+    await vault.restoreAndUnlockFromPayload(payload, masterPassword, mockHandle);
+
+    expect(vault.status).toBe('unlocked');
+    expect(vault.settings.syncProvider).toBe('local-file');
+    expect(vault.settings.localFileSync?.fileName).toBe('shared.vault');
+
+    const linkedHandle = await getLinkedHandle();
+    expect(linkedHandle?.name).toBe('shared.vault');
+  });
+
+  it('detects salt mismatch when syncing with local file and prompts for password', async () => {
+    // 1. Initialize active vault with password and Salt A
+    const activePassword = 'ActiveVaultPassword1!';
+    const activeKdf = generateKdfParams();
+    activeKdf.iterations = 1;
+    activeKdf.memoryKiB = 1024;
+    const { keyBytes: activeKey } = await deriveMasterKey(activePassword, activeKdf);
+
+    const activeData: VaultData = {
+      version: 1,
+      updatedAt: 1000,
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+      groups: [],
+      entries: [
+        {
+          id: 'local-1',
+          issuer: 'LocalIssuer',
+          label: 'local@domain.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ],
+    };
+
+    const activePayload = await encryptVault(activeData, activeKey, activeKdf);
+    vault.status = 'unlocked';
+    vault.masterKey = activeKey;
+    vault.cachedPayload = activePayload;
+    vault.data = activeData;
+
+    // 2. Create a remote file payload created on another browser with Salt B
+    const remotePassword = 'RemoteVaultPassword2@';
+    const remoteKdf = generateKdfParams();
+    remoteKdf.iterations = 1;
+    remoteKdf.memoryKiB = 1024;
+    const { keyBytes: remoteKey } = await deriveMasterKey(remotePassword, remoteKdf);
+
+    const remoteData: VaultData = {
+      version: 1,
+      updatedAt: 2000,
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+      groups: [],
+      entries: [
+        {
+          id: 'remote-1',
+          issuer: 'RemoteIssuer',
+          label: 'remote@domain.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 2000,
+          updatedAt: 2000,
+        },
+      ],
+    };
+
+    const remotePayload = await encryptVault(remoteData, remoteKey, remoteKdf);
+
+    let writtenContent = '';
+    const mockFile = {
+      text: vi.fn().mockResolvedValue(JSON.stringify(remotePayload)),
+    };
+    const mockHandle = {
+      name: 'cross-browser.vault',
+      queryPermission: vi.fn().mockResolvedValue('granted'),
+      requestPermission: vi.fn().mockResolvedValue('granted'),
+      getFile: vi.fn().mockResolvedValue(mockFile),
+      createWritable: vi.fn().mockResolvedValue({
+        write: vi.fn().mockImplementation(async (data: string) => {
+          writtenContent = data;
+        }),
+        close: vi.fn().mockResolvedValue(undefined),
+      }),
+    } as unknown as FileSystemFileHandle;
+
+    // 3. Attempting to sync without remote password should throw VaultSaltMismatchError
+    await expect(vault.syncWithLocalFile(mockHandle)).rejects.toThrowError(VaultSaltMismatchError);
+
+    // 4. Syncing with remote password should succeed, merge entries, and adopt remote credentials
+    const mergeResult = await vault.syncWithLocalFile(mockHandle, remotePassword);
+    expect(mergeResult.entriesAdded).toBe(1);
+    expect(vault.entries.length).toBe(2);
+    expect(vault.entries.map((e) => e.issuer)).toEqual(
+      expect.arrayContaining(['LocalIssuer', 'RemoteIssuer']),
+    );
+    expect(vault.getKdfParams().salt).toBe(remoteKdf.salt);
+    expect(vault.settings.syncProvider).toBe('local-file');
+    expect(writtenContent).toContain('vault2fa-v1');
   });
 });
