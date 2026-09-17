@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Loader2, Shield } from '@lucide/svelte';
-  import { vault } from '$lib/stores';
+  import { vault, pwaInstall } from '$lib/stores';
   import { SetupVault, UnlockVault } from '$lib/components/auth';
   import { MainVault } from '$lib/components/vault';
   import { AddAccountModal, SettingsModal } from '$lib/components/modals';
@@ -12,6 +12,7 @@
   let isSettingsModalOpen = $state(false);
 
   onMount(async () => {
+    pwaInstall.init();
     await vault.checkInitialState();
   });
 
