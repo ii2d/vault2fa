@@ -645,13 +645,14 @@
             </form>
           {/if}
 
-          <div class="relative flex items-center justify-center">
-            <div class="w-full border-t border-white/10"></div>
+          <div class="relative my-2 flex items-center justify-center">
+            <div class="h-px flex-1 bg-white/10"></div>
             <span
-              class="bg-zinc-900/90 px-3 text-[11px] font-medium tracking-wider text-zinc-500 uppercase"
-              >or upload backup file</span
+              class="px-3 text-[11px] font-medium tracking-wider whitespace-nowrap text-zinc-500 uppercase"
             >
-            <div class="w-full border-t border-white/10"></div>
+              or upload backup file
+            </span>
+            <div class="h-px flex-1 bg-white/10"></div>
           </div>
 
           <button
