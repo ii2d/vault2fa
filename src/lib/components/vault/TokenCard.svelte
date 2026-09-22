@@ -1,6 +1,19 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { Pin, Trash2, Copy, Check, RefreshCw, Folder, Pencil, Eye, EyeOff } from '@lucide/svelte';
+  import {
+    Pin,
+    Trash2,
+    Copy,
+    Check,
+    RefreshCw,
+    Folder,
+    Pencil,
+    Eye,
+    EyeOff,
+    FileText,
+    ChevronDown,
+    ChevronUp,
+  } from '@lucide/svelte';
   import { formatToken, generateToken, getPeriodRemaining } from '$lib/core/totp';
   import { vault } from '$lib/stores';
   import type { OTPEntry } from '$lib/types';
@@ -16,6 +29,8 @@
   let currentTime = $state(Date.now());
   let copied = $state(false);
   let isRevealed = $state(false);
+  let isNoteExpanded = $state(false);
+  let noteCopied = $state(false);
   let revealTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Update clock every second
@@ -116,6 +131,25 @@
       )
     ) {
       await vault.deleteEntry(entry.id);
+    }
+  }
+
+  async function handleCopyNote(e: MouseEvent) {
+    e.stopPropagation();
+    if (!entry.note) return;
+    try {
+      await navigator.clipboard.writeText(entry.note);
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(30);
+        } catch {
+          // Ignore vibration failure
+        }
+      }
+      noteCopied = true;
+      setTimeout(() => (noteCopied = false), 1500);
+    } catch {
+      // Fallback
     }
   }
 
@@ -302,6 +336,63 @@
       {/if}
     </div>
   </div>
+
+  <!-- Note section (if present) -->
+  {#if entry.note}
+    <div class="mt-3 border-t border-white/5 pt-2.5">
+      <div class="flex items-center justify-between">
+        <button
+          type="button"
+          onclick={(e) => {
+            e.stopPropagation();
+            isNoteExpanded = !isNoteExpanded;
+          }}
+          class="flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition hover:text-zinc-200"
+          aria-expanded={isNoteExpanded}
+          aria-label={isNoteExpanded ? 'Hide note' : 'Show note'}
+        >
+          <FileText class="h-3.5 w-3.5 text-indigo-400" />
+          <span>Note</span>
+          {#if isNoteExpanded}
+            <ChevronUp class="h-3 w-3 text-zinc-500" />
+          {:else}
+            <ChevronDown class="h-3 w-3 text-zinc-500" />
+          {/if}
+        </button>
+
+        {#if isNoteExpanded}
+          <button
+            type="button"
+            onclick={handleCopyNote}
+            aria-label="Copy note"
+            class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-200"
+            title="Copy note"
+          >
+            {#if noteCopied}
+              <Check class="h-3 w-3 text-emerald-400" />
+              <span class="text-emerald-400">Copied</span>
+            {:else}
+              <Copy class="h-3 w-3" />
+              <span>Copy</span>
+            {/if}
+          </button>
+        {/if}
+      </div>
+
+      {#if isNoteExpanded}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          onclick={(e) => e.stopPropagation()}
+          class="mt-2 max-h-32 overflow-y-auto rounded-lg border border-white/5 bg-zinc-950/70 p-2.5 font-mono text-xs break-words whitespace-pre-wrap text-zinc-300 transition select-text {isMasked
+            ? 'blur-xs select-none'
+            : ''}"
+        >
+          {entry.note}
+        </div>
+      {/if}
+    </div>
+  {/if}
 
   <!-- Group badge (if assigned) -->
   {#if groupName}

@@ -22,6 +22,7 @@ describe('Aegis Interoperability', () => {
           uuid: 'e1-uuid',
           name: 'user@example.com',
           issuer: 'GitHub',
+          note: 'Emergency recovery code: 1234-5678',
           favorite: true,
           info: {
             secret: 'JBSWY3DPEHPK3PXP',
@@ -71,13 +72,15 @@ describe('Aegis Interoperability', () => {
     expect(entries[0].digits).toBe(8);
     expect(entries[0].period).toBe(60);
     expect(entries[0].pinned).toBe(true);
+    expect(entries[0].note).toBe('Emergency recovery code: 1234-5678');
 
     expect(entries[1].id).toBe('e2-uuid');
     expect(entries[1].type).toBe('hotp');
     expect(entries[1].counter).toBe(15);
+    expect(entries[1].note).toBeUndefined();
   });
 
-  it('exports vault data to Aegis-compatible JSON format', () => {
+  it('exports vault data to Aegis-compatible JSON format including notes', () => {
     const mockVault: VaultData = {
       version: 1,
       updatedAt: Date.now(),
@@ -91,6 +94,7 @@ describe('Aegis Interoperability', () => {
           algorithm: 'SHA1',
           digits: 6,
           period: 30,
+          note: 'Google backup code: 9876-5432',
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },
@@ -110,6 +114,7 @@ describe('Aegis Interoperability', () => {
     const parsed = parseAegisJson(aegisJson);
     expect(parsed.entries).toHaveLength(1);
     expect(parsed.entries[0].issuer).toBe('Google');
+    expect(parsed.entries[0].note).toBe('Google backup code: 9876-5432');
   });
 
   it('excludes soft-deleted entries from Aegis export', () => {
