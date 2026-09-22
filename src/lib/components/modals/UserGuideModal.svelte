@@ -9,6 +9,7 @@
     Download,
     CheckCircle2,
     ArrowRightLeft,
+    AlertTriangle,
   } from '@lucide/svelte';
   import { pwaInstall } from '$lib/stores';
   import { APP_CONFIG } from '$lib/config';
@@ -162,6 +163,27 @@
             Import accounts directly from <strong>Google Authenticator</strong> (QR migration
             codes), <strong>Aegis Authenticator</strong> (JSON), <strong>Bitwarden</strong>, or
             standard <code class="font-mono text-zinc-200">otpauth://</code> URI lists (.txt).
+          </p>
+        </div>
+
+        <!-- Incognito & Private Browsing Advisory -->
+        <div class="space-y-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <div class="flex items-center gap-2 font-semibold text-amber-200">
+            <AlertTriangle class="h-4 w-4 shrink-0 text-amber-400" />
+            <span>Chrome Incognito Mode Advisory</span>
+          </div>
+          <p class="text-[11px] text-zinc-300">
+            Do not use Chrome Incognito mode to link local <code class="font-mono text-amber-200"
+              >.vault</code
+            > files. Due to an internal Chromium bug (Issue #562119515), saving a native file handle into
+            in-memory IndexedDB crashes the entire browser process.
+          </p>
+          <p class="text-[11px] text-zinc-400">
+            To restore or use {APP_CONFIG.name} in Incognito mode safely, use
+            <strong>Select Backup File</strong>
+            (standard HTML upload) or <strong>GitHub Gist Sync</strong>, both of which never crash
+            the browser. For continuous live local file synchronization, use a normal browser
+            window.
           </p>
         </div>
       </div>

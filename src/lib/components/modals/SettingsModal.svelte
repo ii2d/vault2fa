@@ -52,6 +52,7 @@
   import InstallGuideModal from './InstallGuideModal.svelte';
   import PrivacyModal from './PrivacyModal.svelte';
   import UserGuideModal from './UserGuideModal.svelte';
+  import IncognitoNoticeModal from './IncognitoNoticeModal.svelte';
   import { APP_CONFIG } from '$lib/config';
   import {
     isFileSystemAccessSupported,
@@ -80,6 +81,7 @@
   let isInstallGuideOpen = $state(false);
   let isPrivacyModalOpen = $state(false);
   let isUserGuideOpen = $state(false);
+  let isIncognitoNoticeOpen = $state(false);
 
   $effect(() => {
     if (isOpen) {
@@ -1057,6 +1059,26 @@
                 </div>
               </div>
 
+              <!-- Incognito Advisory notice -->
+              <div
+                class="mt-3 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-[11px] leading-relaxed text-amber-300/90"
+              >
+                <AlertTriangle class="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+                <div class="flex-1">
+                  <span>
+                    <strong>Chrome Incognito Warning:</strong> Do not link .vault files in Incognito mode
+                    due to a Chromium bug that crashes the browser.
+                  </span>
+                  <button
+                    type="button"
+                    onclick={() => (isIncognitoNoticeOpen = true)}
+                    class="ml-1 font-medium text-amber-400 underline hover:text-amber-300"
+                  >
+                    Learn more
+                  </button>
+                </div>
+              </div>
+
               {#if !localFileSupported}
                 <div
                   class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] text-amber-300"
@@ -1694,6 +1716,10 @@
 <InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />
 <PrivacyModal isOpen={isPrivacyModalOpen} onClose={() => (isPrivacyModalOpen = false)} />
 <UserGuideModal isOpen={isUserGuideOpen} onClose={() => (isUserGuideOpen = false)} />
+<IncognitoNoticeModal
+  isOpen={isIncognitoNoticeOpen}
+  onClose={() => (isIncognitoNoticeOpen = false)}
+/>
 
 <!-- Encrypted Backup Password Prompt Dialog -->
 {#if showBackupPasswordModal}

@@ -5,3 +5,4 @@ export { default as RecoveryKitModal } from './RecoveryKitModal.svelte';
 export { default as InstallGuideModal } from './InstallGuideModal.svelte';
 export { default as PrivacyModal } from './PrivacyModal.svelte';
 export { default as UserGuideModal } from './UserGuideModal.svelte';
+export { default as IncognitoNoticeModal } from './IncognitoNoticeModal.svelte';

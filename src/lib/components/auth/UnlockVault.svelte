@@ -9,6 +9,7 @@
     AlertCircle,
     Loader2,
     Upload,
+    AlertTriangle,
     RotateCcw,
     Trash2,
     X,
@@ -35,6 +36,7 @@
   import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
   import PrivacyModal from '$lib/components/modals/PrivacyModal.svelte';
   import UserGuideModal from '$lib/components/modals/UserGuideModal.svelte';
+  import IncognitoNoticeModal from '$lib/components/modals/IncognitoNoticeModal.svelte';
 
   let password = $state('');
   let showPassword = $state(false);
@@ -44,6 +46,7 @@
   let isInstallGuideOpen = $state(false);
   let isPrivacyModalOpen = $state(false);
   let isUserGuideOpen = $state(false);
+  let isIncognitoNoticeOpen = $state(false);
 
   // Recovery / Restore Modal State
   let showRecoveryModal = $state(false);
@@ -403,6 +406,16 @@
       <BookOpen class="h-3.5 w-3.5 text-indigo-400" />
       <span>User Guide</span>
     </button>
+    <span>•</span>
+
+    <button
+      type="button"
+      onclick={() => (isIncognitoNoticeOpen = true)}
+      class="flex items-center gap-1 transition hover:text-zinc-300"
+    >
+      <AlertTriangle class="h-3.5 w-3.5 text-amber-400" />
+      <span>Incognito Advisory</span>
+    </button>
   </div>
 </div>
 
@@ -647,3 +660,7 @@
 <InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />
 <PrivacyModal isOpen={isPrivacyModalOpen} onClose={() => (isPrivacyModalOpen = false)} />
 <UserGuideModal isOpen={isUserGuideOpen} onClose={() => (isUserGuideOpen = false)} />
+<IncognitoNoticeModal
+  isOpen={isIncognitoNoticeOpen}
+  onClose={() => (isIncognitoNoticeOpen = false)}
+/>
