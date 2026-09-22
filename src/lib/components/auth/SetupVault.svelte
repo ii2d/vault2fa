@@ -18,6 +18,7 @@
     FolderSync,
     Cloud,
     ClipboardPaste,
+    AlertTriangle,
   } from '@lucide/svelte';
   import { vault, pwaInstall } from '$lib/stores';
   import {
@@ -39,11 +40,13 @@
   import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
   import PrivacyModal from '$lib/components/modals/PrivacyModal.svelte';
   import UserGuideModal from '$lib/components/modals/UserGuideModal.svelte';
+  import IncognitoNoticeModal from '$lib/components/modals/IncognitoNoticeModal.svelte';
 
   let activeTab = $state<'create' | 'restore'>('create');
   let isInstallGuideOpen = $state(false);
   let isPrivacyModalOpen = $state(false);
   let isUserGuideOpen = $state(false);
+  let isIncognitoNoticeOpen = $state(false);
 
   // Create Flow State
   let password = $state('');
@@ -525,6 +528,36 @@
       {#if !detectedFormat}
         <!-- File Upload Area -->
         <div class="space-y-4">
+          <!-- Incognito Notice Banner -->
+          <div
+            class="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-950/20 p-3.5 text-left"
+          >
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400"
+            >
+              <AlertTriangle class="h-4 w-4" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-amber-200">Chrome Incognito Notice</span>
+                <button
+                  type="button"
+                  onclick={() => (isIncognitoNoticeOpen = true)}
+                  class="text-[11px] font-medium text-amber-400 underline transition hover:text-amber-300"
+                >
+                  Learn More
+                </button>
+              </div>
+              <p class="mt-1 text-[11px] leading-relaxed text-zinc-300">
+                Do not link <code class="rounded bg-black/40 px-1 py-0.5 font-mono text-amber-200"
+                  >.vault</code
+                >
+                files in Incognito mode—a Chromium bug will crash the browser. Use a regular window, or
+                use <strong>Select Backup File</strong> below.
+              </p>
+            </div>
+          </div>
+
           {#if isFileSystemAccessSupported()}
             <button
               type="button"
@@ -875,9 +908,23 @@
       <BookOpen class="h-3.5 w-3.5 text-indigo-400" />
       <span>User Guide</span>
     </button>
+    <span>•</span>
+
+    <button
+      type="button"
+      onclick={() => (isIncognitoNoticeOpen = true)}
+      class="flex items-center gap-1 transition hover:text-zinc-300"
+    >
+      <AlertTriangle class="h-3.5 w-3.5 text-amber-400" />
+      <span>Incognito Advisory</span>
+    </button>
   </div>
 </div>
 
 <InstallGuideModal isOpen={isInstallGuideOpen} onClose={() => (isInstallGuideOpen = false)} />
 <PrivacyModal isOpen={isPrivacyModalOpen} onClose={() => (isPrivacyModalOpen = false)} />
 <UserGuideModal isOpen={isUserGuideOpen} onClose={() => (isUserGuideOpen = false)} />
+<IncognitoNoticeModal
+  isOpen={isIncognitoNoticeOpen}
+  onClose={() => (isIncognitoNoticeOpen = false)}
+/>
