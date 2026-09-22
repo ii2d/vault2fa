@@ -110,7 +110,11 @@
 
   async function handleDelete(e: MouseEvent) {
     e.stopPropagation();
-    if (confirm(`Remove "${entry.issuer || entry.label}" from your vault?`)) {
+    if (
+      confirm(
+        `Move "${entry.issuer || entry.label}" to Recently Deleted? You can restore it from the restoring view or completely delete it later.`,
+      )
+    ) {
       await vault.deleteEntry(entry.id);
     }
   }
@@ -199,7 +203,7 @@
         onclick={handleDelete}
         aria-label="Delete token"
         class="rounded-lg p-1.5 text-zinc-400 transition hover:bg-rose-500/20 hover:text-rose-400"
-        title="Delete"
+        title="Move to Recently Deleted"
       >
         <Trash2 class="h-3.5 w-3.5" />
       </button>

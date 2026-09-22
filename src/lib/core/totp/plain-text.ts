@@ -100,6 +100,8 @@ export function exportToPlainTextUris(vault: VaultData): string {
     '',
   ];
 
-  const lines = vault.entries.map((entry) => buildOtpUri(entry));
+  const lines = vault.entries
+    .filter((entry) => !entry.deletedAt)
+    .map((entry) => buildOtpUri(entry));
   return [...header, ...lines].join('\n');
 }

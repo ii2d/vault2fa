@@ -1,18 +1,19 @@
 <script lang="ts">
-  import { Folder, Plus, Check, X, ChevronDown } from '@lucide/svelte';
+  import { Folder, Plus, Check, X, ChevronDown, Trash2 } from '@lucide/svelte';
   import { vault } from '$lib/stores';
 
   let isAddingGroup = $state(false);
   let newGroupName = $state('');
 
-  const allCount = $derived(vault.data?.entries.length ?? 0);
+  const allCount = $derived(vault.activeEntriesCount);
+  const deletedCount = $derived(vault.deletedEntriesCount);
 
   function getGroupCount(groupId: string): number {
-    return vault.data?.entries.filter((e) => e.groupId === groupId).length ?? 0;
+    return vault.data?.entries.filter((e) => !e.deletedAt && e.groupId === groupId).length ?? 0;
   }
 
   const uncategorizedCount = $derived.by(() => {
-    return vault.data?.entries.filter((e) => !e.groupId).length ?? 0;
+    return vault.data?.entries.filter((e) => !e.deletedAt && !e.groupId).length ?? 0;
   });
 
   async function handleCreateGroup() {
@@ -80,6 +81,11 @@
         {#if uncategorizedCount > 0}
           <option value="uncategorized" class="bg-zinc-900 text-zinc-100"
             >Uncategorized ({uncategorizedCount})</option
+          >
+        {/if}
+        {#if deletedCount > 0 || vault.activeGroupId === 'deleted'}
+          <option value="deleted" class="bg-zinc-900 font-semibold text-amber-400"
+            >Recently Deleted ({deletedCount})</option
           >
         {/if}
       </select>
@@ -160,6 +166,28 @@
           : 'bg-zinc-800 text-zinc-400'}"
       >
         {uncategorizedCount}
+      </span>
+    </button>
+  {/if}
+
+  <!-- Recently Deleted tab -->
+  {#if deletedCount > 0 || vault.activeGroupId === 'deleted'}
+    <button
+      type="button"
+      onclick={() => (vault.activeGroupId = 'deleted')}
+      class="flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-1.5 font-medium transition {vault.activeGroupId ===
+      'deleted'
+        ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+        : 'border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300'}"
+    >
+      <Trash2 class="h-3.5 w-3.5" />
+      <span>Recently Deleted</span>
+      <span
+        class="rounded-full px-1.5 py-0.5 text-xs font-semibold {vault.activeGroupId === 'deleted'
+          ? 'bg-amber-800/80 text-amber-100'
+          : 'bg-amber-500/20 text-amber-300'}"
+      >
+        {deletedCount}
       </span>
     </button>
   {/if}

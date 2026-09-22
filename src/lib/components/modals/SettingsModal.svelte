@@ -27,6 +27,7 @@
     Printer,
     BookOpen,
     ShieldCheck,
+    RotateCcw,
   } from '@lucide/svelte';
   import { vault } from '$lib/stores';
   import {
@@ -1482,6 +1483,43 @@
                   <Upload class="h-3.5 w-3.5 text-indigo-400" />
                   <span>Import</span>
                 {/if}
+              </button>
+            </div>
+
+            <!-- Recently Deleted / Restoring View -->
+            <div
+              class="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div class="flex items-start gap-3">
+                <div
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-400"
+                >
+                  <RotateCcw class="h-4 w-4" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-xs font-bold text-white">Recently Deleted Secrets</h3>
+                    <span
+                      class="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300"
+                    >
+                      {vault.deletedEntriesCount}
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-zinc-400">
+                    Review, restore deleted secrets, or completely delete them permanently.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onclick={() => {
+                  vault.activeGroupId = 'deleted';
+                  onClose();
+                }}
+                class="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-600/20 px-3.5 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-600 hover:text-white"
+              >
+                <RotateCcw class="h-3.5 w-3.5" />
+                <span>Restoring View</span>
               </button>
             </div>
 

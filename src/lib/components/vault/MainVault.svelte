@@ -6,6 +6,7 @@
   import GroupFilterBar from './GroupFilterBar.svelte';
   import TokenCard from './TokenCard.svelte';
   import EmptyVault from './EmptyVault.svelte';
+  import DeletedSecretsView from './DeletedSecretsView.svelte';
   import { EditAccountModal } from '$lib/components/modals';
 
   let {
@@ -19,6 +20,7 @@
   let editingEntry = $state<OTPEntry | null>(null);
 
   const totalEntriesCount = $derived(vault.data?.entries.length ?? 0);
+  const isDeletedView = $derived(vault.activeGroupId === 'deleted');
   const filteredEntries = $derived(vault.entries);
 </script>
 
@@ -38,8 +40,9 @@
         <GroupFilterBar />
       </div>
 
-      <!-- Token Grid -->
-      {#if filteredEntries.length === 0}
+      {#if isDeletedView}
+        <DeletedSecretsView />
+      {:else if filteredEntries.length === 0}
         <div class="rounded-2xl border border-white/5 bg-zinc-900/40 p-12 text-center">
           <Search class="mx-auto mb-3 h-8 w-8 text-zinc-600" />
           <p class="text-sm font-medium text-zinc-300">No matching accounts found</p>

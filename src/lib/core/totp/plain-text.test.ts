@@ -134,4 +134,50 @@ otpauth://totp/AWS:admin?secret=HXDMVJECJJWSRB3H
     expect(entries[0].issuer).toBe('Quoted');
     expect(entries[1].issuer).toBe('SingleQuoted');
   });
+
+  it('excludes soft-deleted entries from plain text export', () => {
+    const mockVault: VaultData = {
+      version: 1,
+      updatedAt: 0,
+      entries: [
+        {
+          id: '1',
+          issuer: 'ActiveAccount',
+          label: 'active@site.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 0,
+          updatedAt: 0,
+        },
+        {
+          id: '2',
+          issuer: 'DeletedAccount',
+          label: 'deleted@site.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 0,
+          updatedAt: 0,
+          deletedAt: 1000,
+        },
+      ],
+      groups: [],
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+    };
+
+    const exportedText = exportToPlainTextUris(mockVault);
+    const { entries } = parsePlainTextOtpList(exportedText);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].issuer).toBe('ActiveAccount');
+  });
 });

@@ -1,3 +1,4 @@
+import { SvelteSet } from 'svelte/reactivity';
 import { decryptVault, deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
 import { db } from '$lib/core/storage';
 import {
@@ -54,13 +55,17 @@ class VaultStore {
    */
   entries = $derived.by(() => {
     if (!this.data) return [];
-    let list = [...this.data.entries];
+    let list: OTPEntry[];
 
-    // Filter by group
-    if (this.activeGroupId === 'uncategorized') {
-      list = list.filter((e) => !e.groupId);
-    } else if (this.activeGroupId) {
-      list = list.filter((e) => e.groupId === this.activeGroupId);
+    if (this.activeGroupId === 'deleted') {
+      list = this.data.entries.filter((e) => Boolean(e.deletedAt));
+    } else {
+      list = this.data.entries.filter((e) => !e.deletedAt);
+      if (this.activeGroupId === 'uncategorized') {
+        list = list.filter((e) => !e.groupId);
+      } else if (this.activeGroupId) {
+        list = list.filter((e) => e.groupId === this.activeGroupId);
+      }
     }
 
     // Filter by search query
@@ -74,9 +79,15 @@ class VaultStore {
       );
     }
 
-    // Sort: pinned first, then alphabetical by issuer/label
+    // Sort:
+    // If in deleted view, sort by most recently deleted first
+    if (this.activeGroupId === 'deleted') {
+      return list.sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0));
+    }
+
+    // Otherwise: pinned first, then alphabetical by issuer/label
     return list.sort((a, b) => {
-      if (Boolean(a.pinned) !== Boolean(b.pinned)) {
+      if (Boolean(a.pinned) !== Boolean(a.pinned)) {
         return a.pinned ? -1 : 1;
       }
       const nameA = (a.issuer || a.label).toLowerCase();
@@ -84,6 +95,12 @@ class VaultStore {
       return nameA.localeCompare(nameB);
     });
   });
+
+  activeEntriesCount = $derived(this.data?.entries.filter((e) => !e.deletedAt).length ?? 0);
+  deletedEntriesCount = $derived(
+    this.data?.entries.filter((e) => Boolean(e.deletedAt)).length ?? 0,
+  );
+  deletedEntries = $derived(this.data?.entries.filter((e) => Boolean(e.deletedAt)) ?? []);
 
   groups = $derived<VaultGroup[]>(this.data?.groups ?? []);
   settings = $derived<VaultSettings>(this.data?.settings ?? DEFAULT_VAULT_SETTINGS);
@@ -273,9 +290,66 @@ class VaultStore {
   }
 
   /**
-   * Deletes an entry by ID and records a tombstone for sync conflict resolution.
+   * Soft-deletes an entry by ID and moves it to the restoring / recently deleted view.
    */
   async deleteEntry(id: string): Promise<void> {
+    this.ensureUnlocked();
+
+    const now = Date.now();
+    const updatedEntries = this.data!.entries.map((e) => {
+      if (e.id === id) {
+        return {
+          ...e,
+          deletedAt: now,
+          updatedAt: now,
+        };
+      }
+      return e;
+    });
+
+    const updatedData: VaultData = {
+      ...this.data!,
+      updatedAt: now,
+      entries: updatedEntries,
+    };
+
+    await this.persistData(updatedData);
+  }
+
+  /**
+   * Restores a soft-deleted entry back to active accounts.
+   */
+  async restoreEntry(id: string): Promise<void> {
+    this.ensureUnlocked();
+
+    const now = Date.now();
+    const updatedEntries = this.data!.entries.map((e) => {
+      if (e.id === id) {
+        const copy = { ...e };
+        delete copy.deletedAt;
+        copy.updatedAt = now;
+        return copy;
+      }
+      return e;
+    });
+
+    // Clear any tombstone for this id if present
+    const updatedTombstones = (this.data!.tombstones ?? []).filter((t) => t.id !== id);
+
+    const updatedData: VaultData = {
+      ...this.data!,
+      updatedAt: now,
+      entries: updatedEntries,
+      tombstones: updatedTombstones,
+    };
+
+    await this.persistData(updatedData);
+  }
+
+  /**
+   * Permanently deletes an entry and records a tombstone for sync conflict resolution.
+   */
+  async purgeEntry(id: string): Promise<void> {
     this.ensureUnlocked();
 
     const now = Date.now();
@@ -287,6 +361,62 @@ class VaultStore {
       updatedAt: now,
       entries: this.data!.entries.filter((e) => e.id !== id),
       tombstones: updatedTombstones,
+    };
+
+    await this.persistData(updatedData);
+  }
+
+  /**
+   * Restores all soft-deleted entries back to the active vault.
+   */
+  async restoreAllDeletedEntries(): Promise<void> {
+    this.ensureUnlocked();
+
+    const now = Date.now();
+    const restoredIds = new SvelteSet<string>();
+
+    const updatedEntries = this.data!.entries.map((e) => {
+      if (e.deletedAt) {
+        restoredIds.add(e.id);
+        const copy = { ...e };
+        delete copy.deletedAt;
+        copy.updatedAt = now;
+        return copy;
+      }
+      return e;
+    });
+
+    const updatedTombstones = (this.data!.tombstones ?? []).filter((t) => !restoredIds.has(t.id));
+
+    const updatedData: VaultData = {
+      ...this.data!,
+      updatedAt: now,
+      entries: updatedEntries,
+      tombstones: updatedTombstones,
+    };
+
+    await this.persistData(updatedData);
+  }
+
+  /**
+   * Permanently removes all soft-deleted entries and records tombstones.
+   */
+  async purgeAllDeletedEntries(): Promise<void> {
+    this.ensureUnlocked();
+
+    const now = Date.now();
+    const deletedList = this.data!.entries.filter((e) => Boolean(e.deletedAt));
+    if (deletedList.length === 0) return;
+
+    const newTombstones = deletedList.map((e) => ({ id: e.id, deletedAt: now }));
+    const deletedIds = new SvelteSet(deletedList.map((e) => e.id));
+    const remainingTombstones = (this.data!.tombstones ?? []).filter((t) => !deletedIds.has(t.id));
+
+    const updatedData: VaultData = {
+      ...this.data!,
+      updatedAt: now,
+      entries: this.data!.entries.filter((e) => !e.deletedAt),
+      tombstones: [...remainingTombstones, ...newTombstones],
     };
 
     await this.persistData(updatedData);
