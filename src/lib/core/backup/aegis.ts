@@ -126,6 +126,7 @@ export function parseAegisJson(content: string): {
       counter: type === 'hotp' ? (item.info.counter ?? 0) : undefined,
       pinned: Boolean(item.favorite),
       groupId,
+      note: item.note?.trim() || undefined,
       createdAt: now,
       updatedAt: now,
     });
@@ -159,7 +160,7 @@ export function exportToAegisJson(vault: VaultData): string {
       uuid: entry.id,
       name: entry.label,
       issuer: entry.issuer,
-      note: '',
+      note: entry.note || '',
       favorite: Boolean(entry.pinned),
       icon: null,
       info: {

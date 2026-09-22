@@ -27,6 +27,7 @@
   let issuer = $state('');
   let label = $state('');
   let secret = $state('');
+  let note = $state('');
   let showSecret = $state(false);
   let groupId = $state('');
   let pinned = $state(false);
@@ -45,6 +46,7 @@
       issuer = entry.issuer || '';
       label = entry.label || '';
       secret = entry.secret || '';
+      note = entry.note || '';
       showSecret = false;
       groupId = entry.groupId || '';
       pinned = Boolean(entry.pinned);
@@ -86,6 +88,7 @@
         secret: cleanedSecret,
         groupId: groupId ? groupId : undefined,
         pinned,
+        note: note.trim() || undefined,
         type,
         algorithm,
         digits,
@@ -221,6 +224,20 @@
               <option value={group.id}>{group.name}</option>
             {/each}
           </select>
+        </div>
+
+        <!-- Notes / Recovery Codes -->
+        <div>
+          <label for="edit-note" class="block text-xs font-medium text-zinc-300">
+            Notes / Recovery Codes <span class="font-normal text-zinc-500">(Optional)</span>
+          </label>
+          <textarea
+            id="edit-note"
+            bind:value={note}
+            rows={3}
+            placeholder="e.g. Backup codes, account PIN, or recovery info..."
+            class="mt-1.5 w-full resize-y rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 font-mono text-xs text-white placeholder-zinc-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+          ></textarea>
         </div>
 
         <!-- Pin to Top Toggle -->

@@ -114,6 +114,20 @@ describe('VaultStore group filtering', () => {
     expect(vault.entries[0].issuer).toBe('Personal Email');
   });
 
+  it('filters entries matching search query in note field', () => {
+    vault.data!.entries[0].note = 'Personal emergency recovery code: xyz-123';
+    vault.searchQuery = 'xyz-123';
+    expect(vault.entries.length).toBe(1);
+    expect(vault.entries[0].issuer).toBe('GitHub');
+
+    vault.searchQuery = 'EMERGENCY';
+    expect(vault.entries.length).toBe(1);
+    expect(vault.entries[0].issuer).toBe('GitHub');
+
+    vault.searchQuery = 'nonexistent-query';
+    expect(vault.entries.length).toBe(0);
+  });
+
   it('restores and unlocks vault from an encrypted payload', async () => {
     const masterPassword = 'MySecretPassword123!';
     const kdf = generateKdfParams();

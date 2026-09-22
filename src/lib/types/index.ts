@@ -24,6 +24,7 @@ export interface OTPEntry {
   pinned?: boolean;
   tags?: string[];
   icon?: string;
+  note?: string;
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;

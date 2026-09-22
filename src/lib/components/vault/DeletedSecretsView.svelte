@@ -322,6 +322,16 @@
                 {/if}
               </button>
             </div>
+
+            <!-- Note snippet (if present) -->
+            {#if entry.note}
+              <div
+                class="mt-2.5 line-clamp-2 rounded-lg border border-white/5 bg-zinc-950/50 p-2 font-mono text-[11px] break-words text-zinc-400"
+                title={entry.note}
+              >
+                {entry.note}
+              </div>
+            {/if}
           </div>
 
           <!-- Bottom Actions: Restore or Completely Delete -->

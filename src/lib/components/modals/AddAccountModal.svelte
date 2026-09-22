@@ -55,6 +55,7 @@
   let issuer = $state('');
   let label = $state('');
   let secret = $state('');
+  let note = $state('');
   let groupId = $state<string>('');
   let type = $state<OTPType>('totp');
   let algorithm = $state<OTPAlgorithm>('SHA1');
@@ -264,6 +265,7 @@
         period,
         counter: type === 'hotp' ? counter : undefined,
         groupId: groupId || undefined,
+        note: note.trim() || undefined,
       });
       resetForm();
       onClose();
@@ -326,6 +328,7 @@
     issuer = '';
     label = '';
     secret = '';
+    note = '';
     groupId = getEffectiveGroupId(vault.activeGroupId) ?? '';
     type = 'totp';
     algorithm = 'SHA1';
@@ -688,6 +691,22 @@
                 </select>
               </div>
             {/if}
+
+            <!-- Notes / Recovery Codes -->
+            <div>
+              <div class="mb-1.5 flex items-center justify-between">
+                <label for="note" class="text-xs font-medium text-zinc-400">
+                  Notes / Recovery Codes <span class="font-normal text-zinc-500">(Optional)</span>
+                </label>
+              </div>
+              <textarea
+                id="note"
+                bind:value={note}
+                rows={3}
+                placeholder="e.g. Backup codes, account PIN, or recovery info..."
+                class="w-full resize-y rounded-xl border border-white/10 bg-zinc-950 px-3.5 py-2.5 font-mono text-xs text-white placeholder-zinc-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              ></textarea>
+            </div>
 
             <!-- Advanced Settings Accordion -->
             <div class="border-t border-white/10 pt-3">

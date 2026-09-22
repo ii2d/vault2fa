@@ -75,7 +75,8 @@ class VaultStore {
         (e) =>
           e.issuer.toLowerCase().includes(query) ||
           e.label.toLowerCase().includes(query) ||
-          e.tags?.some((t) => t.toLowerCase().includes(query)),
+          e.tags?.some((t) => t.toLowerCase().includes(query)) ||
+          e.note?.toLowerCase().includes(query),
       );
     }
 
