@@ -152,24 +152,26 @@ export function exportToAegisJson(vault: VaultData): string {
     });
   }
 
-  const aegisEntries: AegisEntry[] = vault.entries.map((entry) => ({
-    type: entry.type,
-    uuid: entry.id,
-    name: entry.label,
-    issuer: entry.issuer,
-    note: '',
-    favorite: Boolean(entry.pinned),
-    icon: null,
-    info: {
-      secret: entry.secret,
-      algo: entry.algorithm,
-      digits: entry.digits,
-      period: entry.period,
-      ...(entry.type === 'hotp' ? { counter: entry.counter ?? 0 } : {}),
-    },
-    groups:
-      entry.groupId && groupLookup.has(entry.groupId) ? [groupLookup.get(entry.groupId)!] : [],
-  }));
+  const aegisEntries: AegisEntry[] = vault.entries
+    .filter((entry) => !entry.deletedAt)
+    .map((entry) => ({
+      type: entry.type,
+      uuid: entry.id,
+      name: entry.label,
+      issuer: entry.issuer,
+      note: '',
+      favorite: Boolean(entry.pinned),
+      icon: null,
+      info: {
+        secret: entry.secret,
+        algo: entry.algorithm,
+        digits: entry.digits,
+        period: entry.period,
+        ...(entry.type === 'hotp' ? { counter: entry.counter ?? 0 } : {}),
+      },
+      groups:
+        entry.groupId && groupLookup.has(entry.groupId) ? [groupLookup.get(entry.groupId)!] : [],
+    }));
 
   const aegisExport: AegisExportFormat = {
     version: 1,

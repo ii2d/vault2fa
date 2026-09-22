@@ -510,3 +510,118 @@ describe('VaultStore group filtering', () => {
     expect(vault.getKdfParams().salt).toBe(remoteKdf.salt);
   });
 });
+
+describe('VaultStore soft delete, restore, and purge operations', () => {
+  beforeEach(() => {
+    vault.status = 'unlocked';
+    vault.data = {
+      version: 1,
+      updatedAt: 1000,
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+      groups: [{ id: 'work', name: 'Work' }],
+      entries: [
+        {
+          id: 'item-1',
+          issuer: 'GitHub',
+          label: 'alice',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          groupId: 'work',
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+        {
+          id: 'item-2',
+          issuer: 'AWS',
+          label: 'root',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 2000,
+          updatedAt: 2000,
+        },
+      ],
+      tombstones: [],
+    };
+    vault.activeGroupId = null;
+    vault.searchQuery = '';
+  });
+
+  it('soft-deletes an entry and moves it to restoring view', async () => {
+    expect(vault.activeEntriesCount).toBe(2);
+    expect(vault.deletedEntriesCount).toBe(0);
+
+    await vault.deleteEntry('item-1');
+
+    expect(vault.activeEntriesCount).toBe(1);
+    expect(vault.deletedEntriesCount).toBe(1);
+    expect(vault.entries.length).toBe(1);
+    expect(vault.entries[0].id).toBe('item-2');
+
+    // In restoring view:
+    vault.activeGroupId = 'deleted';
+    expect(vault.entries.length).toBe(1);
+    expect(vault.entries[0].id).toBe('item-1');
+    expect(vault.entries[0].deletedAt).toBeDefined();
+
+    // No permanent tombstone created on soft-delete
+    expect(vault.data?.tombstones?.length).toBe(0);
+  });
+
+  it('restores a deleted secret back to active vault', async () => {
+    await vault.deleteEntry('item-1');
+    expect(vault.activeEntriesCount).toBe(1);
+
+    await vault.restoreEntry('item-1');
+    expect(vault.activeEntriesCount).toBe(2);
+    expect(vault.deletedEntriesCount).toBe(0);
+
+    vault.activeGroupId = null;
+    expect(vault.entries.map((e) => e.id)).toContain('item-1');
+    expect(vault.entries.find((e) => e.id === 'item-1')?.deletedAt).toBeUndefined();
+  });
+
+  it('completely deletes (purges) a secret and records a tombstone', async () => {
+    await vault.deleteEntry('item-1');
+    expect(vault.deletedEntriesCount).toBe(1);
+
+    await vault.purgeEntry('item-1');
+    expect(vault.data?.entries.length).toBe(1);
+    expect(vault.deletedEntriesCount).toBe(0);
+    expect(vault.activeEntriesCount).toBe(1);
+    expect(vault.data?.tombstones).toEqual([expect.objectContaining({ id: 'item-1' })]);
+  });
+
+  it('restores all deleted secrets at once', async () => {
+    await vault.deleteEntry('item-1');
+    await vault.deleteEntry('item-2');
+    expect(vault.activeEntriesCount).toBe(0);
+    expect(vault.deletedEntriesCount).toBe(2);
+
+    await vault.restoreAllDeletedEntries();
+    expect(vault.activeEntriesCount).toBe(2);
+    expect(vault.deletedEntriesCount).toBe(0);
+    expect(vault.entries.length).toBe(2);
+  });
+
+  it('purges all deleted secrets at once and records tombstones', async () => {
+    await vault.deleteEntry('item-1');
+    await vault.deleteEntry('item-2');
+    expect(vault.deletedEntriesCount).toBe(2);
+
+    await vault.purgeAllDeletedEntries();
+    expect(vault.data?.entries.length).toBe(0);
+    expect(vault.deletedEntriesCount).toBe(0);
+    expect(vault.data?.tombstones?.length).toBe(2);
+  });
+});

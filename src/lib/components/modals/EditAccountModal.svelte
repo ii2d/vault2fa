@@ -103,7 +103,11 @@
   async function handleDelete() {
     if (!entry) return;
     const displayName = entry.issuer || entry.label || 'this account';
-    if (confirm(`Are you sure you want to delete "${displayName}" from your vault?`)) {
+    if (
+      confirm(
+        `Move "${displayName}" to Recently Deleted?\n\nYou can restore it from the restoring view or completely delete it later.`,
+      )
+    ) {
       try {
         await vault.deleteEntry(entry.id);
         onClose();
@@ -380,7 +384,7 @@
             class="flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3.5 py-2.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20 hover:text-rose-300"
           >
             <Trash2 class="h-3.5 w-3.5" />
-            <span>Delete</span>
+            <span>Move to Trash</span>
           </button>
 
           <div class="flex items-center gap-2">

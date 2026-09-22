@@ -111,6 +111,52 @@ describe('Aegis Interoperability', () => {
     expect(parsed.entries).toHaveLength(1);
     expect(parsed.entries[0].issuer).toBe('Google');
   });
+
+  it('excludes soft-deleted entries from Aegis export', () => {
+    const mockVault: VaultData = {
+      version: 1,
+      updatedAt: Date.now(),
+      entries: [
+        {
+          id: 'active-1',
+          issuer: 'ActiveGoogle',
+          label: 'active@gmail.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+        {
+          id: 'deleted-1',
+          issuer: 'DeletedSecret',
+          label: 'deleted@test.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          deletedAt: Date.now() - 5000,
+        },
+      ],
+      groups: [],
+      settings: {
+        autoLockTimeoutMinutes: 5,
+        biometricUnlockEnabled: false,
+        syncProvider: 'none',
+        theme: 'dark',
+      },
+    };
+
+    const aegisJson = exportToAegisJson(mockVault);
+    const parsed = parseAegisJson(aegisJson);
+    expect(parsed.entries).toHaveLength(1);
+    expect(parsed.entries[0].id).toBe('active-1');
+  });
 });
 
 describe('Native Backup & Restore', () => {

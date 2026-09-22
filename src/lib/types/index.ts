@@ -26,6 +26,7 @@ export interface OTPEntry {
   icon?: string;
   createdAt: number;
   updatedAt: number;
+  deletedAt?: number;
 }
 
 /**
