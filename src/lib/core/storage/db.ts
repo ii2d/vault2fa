@@ -17,7 +17,8 @@ export interface BiometricRecord {
   credentialId: string;
   wrappedKey: string; // Base64 wrapped key
   iv: string; // Base64
-  salt: string; // Base64
+  salt: string; // Base64 (HKDF salt)
+  prfSalt?: string; // Base64 (WebAuthn PRF evaluation salt)
   createdAt: number;
 }
 
