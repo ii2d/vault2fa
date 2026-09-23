@@ -808,15 +808,7 @@ class VaultStore {
     await this.persistData(finalData);
     this.syncStatus = 'synced';
 
-    const hasAnyChange =
-      result.entriesAdded > 0 ||
-      result.entriesUpdated > 0 ||
-      result.entriesSoftDeleted > 0 ||
-      result.entriesPurged > 0;
-
-    if (hasAnyChange || !this.lastSyncResult) {
-      this.setLastSyncResult(provider, result);
-    }
+    this.setLastSyncResult(provider, result);
     if (result.hasChanges && this.lastSyncResult) {
       this.showSyncToast(this.lastSyncResult.summary);
     }
@@ -970,6 +962,111 @@ class VaultStore {
       this.syncStatus = 'error';
       this.syncError = (err as Error).message || 'Failed to save to local file.';
       throw err;
+    } finally {
+      this.isAutoSyncing = false;
+    }
+  }
+
+  /**
+   * Manually syncs across all configured storage mediums (Local File, GitHub Gist).
+   * Runs on-demand regardless of individual autoSync settings.
+   */
+  async syncAll(): Promise<{
+    synced: boolean;
+    reason?: 'locked' | 'already-syncing' | 'no-provider';
+    syncedProviders: string[];
+    errors: string[];
+  }> {
+    this.ensureUnlocked();
+
+    if (this.isAutoSyncing) {
+      return { synced: false, reason: 'already-syncing', syncedProviders: [], errors: [] };
+    }
+
+    const gistConfigured = Boolean(this.data?.settings.gistSync?.token?.trim());
+    const localHandle = await getLinkedHandle();
+    const localConfigured = Boolean(localHandle && this.data?.settings.localFileSync);
+
+    if (!gistConfigured && !localConfigured) {
+      return { synced: false, reason: 'no-provider', syncedProviders: [], errors: [] };
+    }
+
+    this.isAutoSyncing = true;
+    this.syncStatus = 'syncing';
+    this.syncError = null;
+
+    const syncedProviders: string[] = [];
+    const errors: string[] = [];
+    let hadChanges = false;
+
+    try {
+      // 1. Sync Local File if configured
+      if (localConfigured && localHandle) {
+        try {
+          const res = await this.syncWithLocalFile(localHandle);
+          syncedProviders.push('Local File');
+          if (res.hasChanges) hadChanges = true;
+        } catch (err: unknown) {
+          const msg = (err as Error).message || 'Local file sync failed';
+          errors.push(msg);
+          console.error('Manual sync local file failed:', err);
+        }
+      }
+
+      // 2. Sync GitHub Gist if configured
+      if (gistConfigured) {
+        try {
+          const res = await this.syncWithGist();
+          syncedProviders.push('GitHub Gist');
+          if (res.hasChanges) hadChanges = true;
+        } catch (err: unknown) {
+          const msg = (err as Error).message || 'GitHub Gist sync failed';
+          errors.push(msg);
+          console.error('Manual sync Gist failed:', err);
+        }
+      }
+
+      // 3. If Gist brought in changes and local file is also configured, update local file
+      if (
+        localConfigured &&
+        localHandle &&
+        syncedProviders.includes('Local File') &&
+        syncedProviders.includes('GitHub Gist') &&
+        hadChanges &&
+        this.cachedPayload
+      ) {
+        try {
+          await writeVaultToFileHandle(localHandle, this.cachedPayload);
+        } catch (err: unknown) {
+          console.warn('Updating local file with synced payload failed:', err);
+        }
+      }
+
+      if (errors.length > 0) {
+        this.syncStatus = 'error';
+        this.syncError = errors.join('; ');
+        this.showSyncToast(`Sync error: ${errors.join('; ')}`);
+        return { synced: false, syncedProviders, errors };
+      }
+
+      this.syncStatus = 'synced';
+      const providerNames = syncedProviders.join(' & ');
+      if (!hadChanges) {
+        if (syncedProviders.length > 0) {
+          const mainProvider = syncedProviders.includes('GitHub Gist')
+            ? 'github-gist'
+            : 'local-file';
+          this.setLastSyncResult(mainProvider, {
+            entriesAdded: 0,
+            entriesUpdated: 0,
+            entriesSoftDeleted: 0,
+            entriesPurged: 0,
+          });
+        }
+        this.showSyncToast(`Synced with ${providerNames} (up to date)`);
+      }
+
+      return { synced: true, syncedProviders, errors: [] };
     } finally {
       this.isAutoSyncing = false;
     }

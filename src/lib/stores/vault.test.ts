@@ -727,4 +727,35 @@ describe('VaultStore sync status & toast notifications', () => {
     expect(vault.data?.settings.gistSync?.gistId).toBe('new-gist-123');
     expect(vault.lastSyncResult?.entriesSoftDeleted).toBe(1);
   });
+
+  it('syncAll returns no-provider when neither Gist nor Local File is configured', async () => {
+    await vault.initVault('TestPassword123!');
+    const result = await vault.syncAll();
+    expect(result.synced).toBe(false);
+    expect(result.reason).toBe('no-provider');
+    expect(result.syncedProviders).toHaveLength(0);
+  });
+
+  it('syncAll manually syncs configured Gist even when autoSync is false', async () => {
+    globalThis.fetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return { ok: true, json: async () => ({ id: 'new-gist-manual-123' }) } as Response;
+      }
+      throw new Error('Unexpected');
+    });
+
+    await vault.initVault('TestPassword123!');
+    await vault.updateSettings({
+      gistSync: {
+        token: 'ghp_token_manual',
+        gistId: '',
+        autoSync: false,
+      },
+    });
+
+    const result = await vault.syncAll();
+    expect(result.synced).toBe(true);
+    expect(result.syncedProviders).toContain('GitHub Gist');
+    expect(vault.syncStatus).toBe('synced');
+  });
 });
