@@ -96,9 +96,11 @@
       type="button"
       onclick={onOpenSettingsModal}
       class="hidden items-center gap-1.5 rounded-xl border border-white/5 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-white/10 hover:text-zinc-200 lg:flex"
-      title={vault.data?.settings.syncProvider && vault.data.settings.syncProvider !== 'none'
-        ? `Sync Active (${vault.data.settings.syncProvider}). Click to manage sync.`
-        : 'Setup decentralized sync or backup.'}
+      title={vault.lastSyncResult
+        ? `${vault.lastSyncResult.summary} (${new Date(vault.lastSyncResult.timestamp).toLocaleTimeString()}). Click to manage sync.`
+        : vault.data?.settings.syncProvider && vault.data.settings.syncProvider !== 'none'
+          ? `Sync Active (${vault.data.settings.syncProvider}). Click to manage sync.`
+          : 'Setup decentralized sync or backup.'}
     >
       {#if vault.syncStatus === 'syncing'}
         <RefreshCw class="h-3.5 w-3.5 animate-spin text-indigo-400" />
@@ -108,7 +110,9 @@
         <span class="text-rose-400">Sync Error</span>
       {:else if vault.data?.settings.syncProvider && vault.data.settings.syncProvider !== 'none'}
         <Cloud class="h-3.5 w-3.5 text-emerald-400" />
-        <span class="text-emerald-400">Synced</span>
+        <span class="text-emerald-400"
+          >{vault.lastSyncResult ? vault.lastSyncResult.badgeText : 'Synced'}</span
+        >
       {:else}
         <Cloud class="h-3.5 w-3.5 text-zinc-500" />
         <span class="text-zinc-400">Sync Off</span>

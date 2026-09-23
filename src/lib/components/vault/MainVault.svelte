@@ -7,6 +7,7 @@
   import TokenCard from './TokenCard.svelte';
   import EmptyVault from './EmptyVault.svelte';
   import DeletedSecretsView from './DeletedSecretsView.svelte';
+  import SyncToast from './SyncToast.svelte';
   import { EditAccountModal } from '$lib/components/modals';
 
   let {
@@ -65,4 +66,6 @@
     isOpen={editingEntry !== null}
     onClose={() => (editingEntry = null)}
   />
+
+  <SyncToast />
 </div>

@@ -1,5 +1,11 @@
 import { db } from '$lib/core/storage';
-import type { EncryptedVaultPayload } from '$lib/types';
+import { encryptVault } from '$lib/core/crypto';
+import { mergeVaultData } from '$lib/core/sync/merge';
+import { VaultSaltMismatchError } from '$lib/core/sync/errors';
+import { decryptRemotePayload, type SyncDriverResult } from './common';
+import type { EncryptedVaultPayload, KeyDerivationParams, VaultData } from '$lib/types';
+
+export type LocalFileSyncResult = SyncDriverResult;
 
 const METADATA_KEY_FILE_HANDLE = 'sync_local_file_handle';
 
@@ -228,5 +234,49 @@ export async function getLocalFileDriverStatus(): Promise<LocalFileDriverStatus>
     isLinked: true,
     fileName: handle.name,
     hasPermission,
+  };
+}
+
+/**
+ * Performs full two-way sync with a local .vault file handle:
+ * Reads remote file, decrypts (resolving salt and credential adoption), merges with local,
+ * and writes back to file if changes exist or credentials changed.
+ */
+export async function syncVaultWithLocalFile(
+  handle: FileSystemFileHandle,
+  localData: VaultData,
+  masterKey: Uint8Array,
+  kdfParams: KeyDerivationParams,
+  remotePassword?: string,
+): Promise<LocalFileSyncResult> {
+  const remotePayload = await readVaultFromFileHandle(handle);
+  const { remoteData, effectiveMasterKey, effectiveKdf } = await decryptRemotePayload(
+    remotePayload,
+    masterKey,
+    kdfParams,
+    remotePassword,
+    () => new VaultSaltMismatchError(handle.name, handle),
+  );
+
+  const mergeResult = mergeVaultData(localData, remoteData);
+
+  if (
+    mergeResult.hasChanges ||
+    effectiveMasterKey !== masterKey ||
+    effectiveKdf.salt !== kdfParams.salt
+  ) {
+    const updatedPayload = await encryptVault(mergeResult.merged, effectiveMasterKey, effectiveKdf);
+    await writeVaultToFileHandle(handle, updatedPayload);
+  }
+
+  return {
+    syncedVault: mergeResult.merged,
+    hasChanges: mergeResult.hasChanges,
+    entriesAdded: mergeResult.entriesAdded,
+    entriesUpdated: mergeResult.entriesUpdated,
+    entriesSoftDeleted: mergeResult.entriesSoftDeleted,
+    entriesPurged: mergeResult.entriesPurged,
+    adoptedKey: effectiveMasterKey !== masterKey ? effectiveMasterKey : undefined,
+    adoptedKdf: effectiveKdf.salt !== kdfParams.salt ? effectiveKdf : undefined,
   };
 }

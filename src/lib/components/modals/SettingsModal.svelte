@@ -64,6 +64,7 @@
     VaultSaltMismatchError,
     GistSaltMismatchError,
     parseSyncConfigQr,
+    formatSyncResult,
   } from '$lib/core/sync';
   import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
@@ -411,6 +412,43 @@
   }
 
   // Local File Sync Handlers
+  function formatSyncFeedback(
+    res: {
+      entriesAdded: number;
+      entriesUpdated: number;
+      entriesSoftDeleted: number;
+      entriesPurged: number;
+    },
+    actionPrefix: string,
+  ): string {
+    const hasDirectChanges =
+      res.entriesAdded > 0 ||
+      res.entriesUpdated > 0 ||
+      res.entriesSoftDeleted > 0 ||
+      res.entriesPurged > 0;
+
+    if (hasDirectChanges) {
+      const { summary } = formatSyncResult(res);
+      return `${actionPrefix} (has updated: ${summary.replace(/^Synced:\s*/, '')})`;
+    }
+
+    if (
+      vault.lastSyncResult &&
+      Date.now() - vault.lastSyncResult.timestamp < 5000 &&
+      (vault.lastSyncResult.entriesAdded > 0 ||
+        vault.lastSyncResult.entriesUpdated > 0 ||
+        vault.lastSyncResult.entriesSoftDeleted > 0 ||
+        vault.lastSyncResult.entriesPurged > 0)
+    ) {
+      const { summary } = formatSyncResult(vault.lastSyncResult);
+      return `${actionPrefix} (has updated: ${summary.replace(/^Synced:\s*/, '')})`;
+    }
+
+    const { summary } = formatSyncResult(res, { vaultData: vault.data ?? undefined });
+    const detail = summary.replace(/^(Synced\s*\(?|.*has updated\s*\(?)/, '').replace(/\)?$/, '');
+    return `${actionPrefix} (up to date: ${detail})`;
+  }
+
   async function handleLinkLocalFile() {
     localFileMessage = null;
     isProcessingLocalFile = true;
@@ -421,7 +459,7 @@
       const res = await vault.syncWithLocalFile(picked.handle);
       localFileMessage = {
         type: 'success',
-        text: `Linked "${picked.fileName}"! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
+        text: formatSyncFeedback(res, `Linked "${picked.fileName}"`),
       };
     } catch (err: unknown) {
       if (err instanceof VaultSaltMismatchError) {
@@ -456,14 +494,14 @@
         localHandle = pendingHandle;
         localFileMessage = {
           type: 'success',
-          text: `Linked and merged with "${pendingFileName}"! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
+          text: formatSyncFeedback(res, `Linked and merged with "${pendingFileName}"`),
         };
       } else {
         const res = await vault.syncWithGist(pendingFilePassword);
         gistId = res.gistId;
         gistMessage = {
           type: 'success',
-          text: `Connected and merged with GitHub Gist! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
+          text: formatSyncFeedback(res, 'Connected and merged with GitHub Gist'),
         };
       }
       saltMismatchModalOpen = false;
@@ -516,9 +554,14 @@
     isProcessingLocalFile = true;
     try {
       await vault.saveToLocalFile(localHandle);
+      const activeCount = vault.data?.entries.filter((e) => !e.deletedAt).length ?? 0;
+      const softDeletedCount = vault.data?.entries.filter((e) => Boolean(e.deletedAt)).length ?? 0;
+      const parts: string[] = [];
+      if (activeCount > 0) parts.push(`${activeCount} active`);
+      if (softDeletedCount > 0) parts.push(`${softDeletedCount} soft-deleted`);
       localFileMessage = {
         type: 'success',
-        text: `Saved to "${localHandle.name}" successfully.`,
+        text: `Saved to "${localHandle.name}" (${parts.join(', ') || '0 accounts'}).`,
       };
     } catch (err: unknown) {
       localFileMessage = {
@@ -538,7 +581,7 @@
       const res = await vault.syncWithLocalFile(localHandle);
       localFileMessage = {
         type: 'success',
-        text: `Synced with "${localHandle.name}" (${res.entriesAdded} added, ${res.entriesUpdated} updated, ${res.entriesDeleted} deleted).`,
+        text: formatSyncFeedback(res, `Synced with "${localHandle.name}"`),
       };
     } catch (err: unknown) {
       if (err instanceof VaultSaltMismatchError) {
@@ -623,20 +666,15 @@
     }
     isSyncingGist = true;
     try {
-      await vault.updateSettings({
-        gistSync: {
-          token: gistToken.trim(),
-          gistId: gistId.trim() || undefined,
-          autoSync: vault.data?.settings.gistSync?.autoSync ?? true,
-          lastSyncedAt: vault.data?.settings.gistSync?.lastSyncedAt,
-        },
+      const res = await vault.syncWithGist({
+        token: gistToken.trim(),
+        gistId: gistId.trim() || undefined,
+        autoSync: vault.data?.settings.gistSync?.autoSync ?? true,
       });
-
-      const res = await vault.syncWithGist();
       gistId = res.gistId;
       gistMessage = {
         type: 'success',
-        text: `Synced with Gist ${res.gistId.slice(0, 8)}... (${res.entriesAdded} added, ${res.entriesUpdated} updated, ${res.entriesDeleted} deleted)`,
+        text: formatSyncFeedback(res, `Synced with Gist ${res.gistId.slice(0, 8)}...`),
       };
     } catch (err: unknown) {
       if (err instanceof GistSaltMismatchError) {
@@ -687,16 +725,11 @@
     isSyncingGist = true;
 
     try {
-      await vault.updateSettings({
-        gistSync: config,
-        syncProvider: 'github-gist',
-      });
-
-      const res = await vault.syncWithGist();
+      const res = await vault.syncWithGist(config);
       gistId = res.gistId;
       gistMessage = {
         type: 'success',
-        text: `Connected to Gist from QR! (${res.entriesAdded} added, ${res.entriesUpdated} updated)`,
+        text: formatSyncFeedback(res, 'Connected to Gist from QR'),
       };
     } catch (err: unknown) {
       if (err instanceof GistSaltMismatchError) {
