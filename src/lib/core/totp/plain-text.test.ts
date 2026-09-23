@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { isPlainTextOtpList, parsePlainTextOtpList, exportToPlainTextUris } from './plain-text';
+import { describe, expect, it } from 'vitest';
 import type { VaultData } from '$lib/types';
+import { exportToPlainTextUris, isPlainTextOtpList, parsePlainTextOtpList } from './plain-text';
 
 describe('Plain Text OTP URI Parser & Exporter', () => {
   it('identifies plain text OTP URI lists correctly', () => {

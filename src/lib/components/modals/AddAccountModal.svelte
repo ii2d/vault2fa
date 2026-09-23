@@ -1,31 +1,31 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import type { IScannerControls } from '@zxing/browser';
   import {
-    QrCode,
-    Keyboard,
-    X,
+    AlertCircle,
     Camera,
-    Upload,
+    CheckSquare,
     ChevronDown,
     ChevronUp,
-    AlertCircle,
-    Loader2,
-    CheckSquare,
-    Square,
+    Keyboard,
     Layers,
+    Loader2,
+    QrCode,
     ShieldCheck,
+    Square,
+    Upload,
+    X,
   } from '@lucide/svelte';
+  import type { IScannerControls } from '@zxing/browser';
+  import { onMount } from 'svelte';
   import {
     cleanSecret,
-    isValidBase32,
-    parseOtpUri,
-    isGoogleMigrationUri,
-    parseGoogleMigrationUri,
     convertMigrationAccountsToEntries,
+    isGoogleMigrationUri,
     isPlainTextOtpList,
-    parsePlainTextOtpList,
+    isValidBase32,
     type MigrationAccount,
+    parseGoogleMigrationUri,
+    parseOtpUri,
+    parsePlainTextOtpList,
   } from '$lib/core/totp';
   import { vault } from '$lib/stores';
   import type { OTPAlgorithm, OTPType } from '$lib/types';

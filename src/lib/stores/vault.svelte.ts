@@ -3,25 +3,25 @@ import { decryptVault, deriveMasterKey, encryptVault, generateKdfParams } from '
 import { db } from '$lib/core/storage';
 import {
   formatSyncResult,
-  mergeVaultData,
+  type GistSyncResult,
   getLinkedHandle,
+  type LocalFileSyncResult,
+  type MergeResult,
+  mergeVaultData,
+  type SyncDriverResult,
   storeLinkedHandle,
-  writeVaultToFileHandle,
   syncVaultWithGist,
   syncVaultWithLocalFile,
-  type GistSyncResult,
-  type LocalFileSyncResult,
-  type SyncDriverResult,
-  type MergeResult,
+  writeVaultToFileHandle,
 } from '$lib/core/sync';
 import type {
   EncryptedVaultPayload,
+  GistSyncConfig,
   KeyDerivationParams,
   OTPEntry,
   VaultData,
   VaultGroup,
   VaultSettings,
-  GistSyncConfig,
 } from '$lib/types';
 
 export type VaultStatus = 'loading' | 'uninitialized' | 'locked' | 'unlocked';
@@ -116,7 +116,7 @@ class VaultStore {
 
     // Otherwise: pinned first, then alphabetical by issuer/label
     return list.sort((a, b) => {
-      if (Boolean(a.pinned) !== Boolean(a.pinned)) {
+      if (Boolean(a.pinned) !== Boolean(b.pinned)) {
         return a.pinned ? -1 : 1;
       }
       const nameA = (a.issuer || a.label).toLowerCase();

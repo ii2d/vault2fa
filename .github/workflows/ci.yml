@@ -37,10 +37,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check code formatting (Prettier)
+      - name: Check code formatting (Biome)
         run: pnpm run format:check
 
-      - name: Lint codebase (ESLint)
+      - name: Lint codebase (Biome)
         run: pnpm run lint
 
       - name: Run unit tests (Vitest)

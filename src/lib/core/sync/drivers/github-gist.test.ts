@@ -1,16 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  validateGitHubToken,
-  createGistWithPayload,
-  fetchGistPayload,
-  updateGistPayload,
-  syncVaultWithGist,
-  encodeSyncConfigQr,
-  parseSyncConfigQr,
-} from './github-gist';
-import { encryptVault, generateKdfParams, deriveMasterKey } from '$lib/core/crypto';
-import { GistSaltMismatchError } from '../errors';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
 import type { EncryptedVaultPayload, VaultData } from '$lib/types';
+import { GistSaltMismatchError } from '../errors';
+import {
+  createGistWithPayload,
+  encodeSyncConfigQr,
+  fetchGistPayload,
+  parseSyncConfigQr,
+  syncVaultWithGist,
+  updateGistPayload,
+  validateGitHubToken,
+} from './github-gist';
 
 describe('GitHub Gist Sync Driver', () => {
   const mockMasterKey = new Uint8Array(32).fill(7);

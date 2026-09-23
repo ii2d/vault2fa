@@ -1,4 +1,3 @@
 {
-  "*.{js,ts,svelte}": ["eslint --fix", "prettier --write"],
-  "*.{json,css,html,md,yml,yaml}": ["prettier --write"]
+  "*.{js,ts,svelte,json,css,html}": ["biome check --write --no-errors-on-unmatched"]
 }

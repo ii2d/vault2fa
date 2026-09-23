@@ -1,15 +1,15 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EncryptedVaultPayload } from '$lib/types';
 import {
-  isFileSystemAccessSupported,
-  storeLinkedHandle,
   getLinkedHandle,
+  isFileSystemAccessSupported,
+  readVaultFromFileHandle,
+  storeLinkedHandle,
+  syncVaultWithLocalFile,
   uncheckLinkedHandle,
   writeVaultToFileHandle,
-  readVaultFromFileHandle,
-  syncVaultWithLocalFile,
 } from './local-file';
-import type { EncryptedVaultPayload } from '$lib/types';
 
 describe('Local File Driver (File System Access)', () => {
   const mockPayload: EncryptedVaultPayload = {

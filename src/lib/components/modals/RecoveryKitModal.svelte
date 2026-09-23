@@ -1,18 +1,18 @@
 <script lang="ts">
   import {
-    X,
-    Printer,
-    Download,
-    ShieldAlert,
-    KeyRound,
-    Check,
     AlertTriangle,
+    Check,
+    Download,
+    KeyRound,
+    Printer,
+    ShieldAlert,
+    X,
   } from '@lucide/svelte';
   import { BrowserQRCodeSvgWriter } from '@zxing/library';
-  import { vault } from '$lib/stores';
-  import { db } from '$lib/core/storage';
-  import { downloadTextFile, exportEncryptedBackup } from '$lib/core/backup';
   import { APP_CONFIG } from '$lib/config';
+  import { downloadTextFile, exportEncryptedBackup } from '$lib/core/backup';
+  import { db } from '$lib/core/storage';
+  import { vault } from '$lib/stores';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 

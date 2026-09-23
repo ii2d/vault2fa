@@ -116,7 +116,6 @@ export function mergeVaultData(
           entriesAdded++;
         }
       }
-      continue;
     }
   }
 

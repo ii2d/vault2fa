@@ -71,10 +71,10 @@ Pre-commit git hooks automatically format and lint staged files via `lint-staged
 
 ```bash
 pnpm run check        # Type check TypeScript and Svelte diagnostics
-pnpm run lint         # Check code with ESLint
-pnpm run lint:fix     # Automatically fix ESLint violations
-pnpm run format       # Format codebase with Prettier
-pnpm run format:check # Verify Prettier formatting
+pnpm run lint         # Check code with Biome
+pnpm run lint:fix     # Automatically fix Biome violations
+pnpm run format       # Format codebase with Biome
+pnpm run format:check # Verify Biome formatting
 pnpm run test         # Run Vitest test suite
 pnpm run pre-commit   # Run lint-staged on demand
 ```

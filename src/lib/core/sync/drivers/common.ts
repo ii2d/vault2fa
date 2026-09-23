@@ -1,6 +1,6 @@
 import { decryptVault, deriveMasterKey } from '$lib/core/crypto';
-import type { EncryptedVaultPayload, KeyDerivationParams, VaultData } from '$lib/types';
 import type { MergeResult } from '$lib/core/sync/merge';
+import type { EncryptedVaultPayload, KeyDerivationParams, VaultData } from '$lib/types';
 
 export interface SyncDriverResult extends Omit<MergeResult, 'merged'> {
   syncedVault: VaultData;

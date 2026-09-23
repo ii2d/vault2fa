@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { X, Camera, AlertCircle, CheckCircle2, ClipboardPaste } from '@lucide/svelte';
+  import { AlertCircle, Camera, CheckCircle2, ClipboardPaste, X } from '@lucide/svelte';
   import type { IScannerControls } from '@zxing/browser';
-  import type { GistSyncConfig } from '$lib/types';
+  import { onMount } from 'svelte';
   import { parseSyncConfigQr } from '$lib/core/sync';
+  import type { GistSyncConfig } from '$lib/types';
 
   let {
     isOpen,

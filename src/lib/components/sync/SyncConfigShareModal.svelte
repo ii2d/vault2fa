@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { X, QrCode, Copy, Check, Cloud } from '@lucide/svelte';
+  import { Check, Cloud, Copy, QrCode, X } from '@lucide/svelte';
   import { BrowserQRCodeSvgWriter, EncodeHintType } from '@zxing/library';
   import { SvelteMap } from 'svelte/reactivity';
-  import type { GistSyncConfig } from '$lib/types';
   import { encodeSyncConfigQr } from '$lib/core/sync';
+  import type { GistSyncConfig } from '$lib/types';
 
   let {
     isOpen,

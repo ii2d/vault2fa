@@ -1,8 +1,8 @@
 import { encryptVault } from '$lib/core/crypto';
-import { mergeVaultData } from '$lib/core/sync/merge';
 import { GistSaltMismatchError } from '$lib/core/sync/errors';
-import { decryptRemotePayload, type SyncDriverResult } from './common';
+import { mergeVaultData } from '$lib/core/sync/merge';
 import type { EncryptedVaultPayload, KeyDerivationParams, VaultData } from '$lib/types';
+import { decryptRemotePayload, type SyncDriverResult } from './common';
 
 const GIST_FILENAME = 'vault2fa-encrypted.json';
 const GIST_DESCRIPTION = 'vault2fa Zero-Knowledge Encrypted Backup';

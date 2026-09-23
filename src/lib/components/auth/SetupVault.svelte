@@ -1,46 +1,46 @@
 <script lang="ts">
   import {
-    Shield,
-    KeyRound,
-    Check,
     AlertCircle,
-    Loader2,
-    Upload,
-    FileText,
-    FileCode,
-    Lock,
+    AlertTriangle,
+    BookOpen,
+    Check,
+    ClipboardPaste,
+    Cloud,
+    Download,
     Eye,
     EyeOff,
-    RotateCcw,
-    Download,
-    BookOpen,
-    ShieldCheck,
+    FileCode,
+    FileText,
     FolderSync,
-    Cloud,
-    ClipboardPaste,
-    AlertTriangle,
+    KeyRound,
+    Loader2,
+    Lock,
+    RotateCcw,
+    Shield,
+    ShieldCheck,
+    Upload,
   } from '@lucide/svelte';
-  import { vault, pwaInstall } from '$lib/stores';
-  import {
-    detectBackupFormat,
-    parseEncryptedBackup,
-    parseUnencryptedBackup,
-    type BackupFormat,
-  } from '$lib/core/backup';
-  import {
-    isFileSystemAccessSupported,
-    pickLocalVaultFile,
-    readVaultFromFileHandle,
-    fetchGistPayload,
-    parseSyncConfigQr,
-  } from '$lib/core/sync';
-  import { isPlainTextOtpList } from '$lib/core/totp';
-  import type { EncryptedVaultPayload, VaultData, GistSyncConfig } from '$lib/types';
-  import { APP_CONFIG } from '$lib/config';
+  import IncognitoNoticeModal from '$lib/components/modals/IncognitoNoticeModal.svelte';
   import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
   import PrivacyModal from '$lib/components/modals/PrivacyModal.svelte';
   import UserGuideModal from '$lib/components/modals/UserGuideModal.svelte';
-  import IncognitoNoticeModal from '$lib/components/modals/IncognitoNoticeModal.svelte';
+  import { APP_CONFIG } from '$lib/config';
+  import {
+    type BackupFormat,
+    detectBackupFormat,
+    parseEncryptedBackup,
+    parseUnencryptedBackup,
+  } from '$lib/core/backup';
+  import {
+    fetchGistPayload,
+    isFileSystemAccessSupported,
+    parseSyncConfigQr,
+    pickLocalVaultFile,
+    readVaultFromFileHandle,
+  } from '$lib/core/sync';
+  import { isPlainTextOtpList } from '$lib/core/totp';
+  import { pwaInstall, vault } from '$lib/stores';
+  import type { EncryptedVaultPayload, GistSyncConfig, VaultData } from '$lib/types';
 
   let activeTab = $state<'create' | 'restore'>('create');
   let isInstallGuideOpen = $state(false);

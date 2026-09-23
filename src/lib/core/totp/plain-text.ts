@@ -3,8 +3,8 @@
  * Supports newline-delimited otpauth:// URI lists and .txt backup exports.
  */
 
-import { parseOtpUri, buildOtpUri } from './generator';
 import type { OTPEntry, VaultData } from '$lib/types';
+import { buildOtpUri, parseOtpUri } from './generator';
 
 export interface ParsedPlainTextResult {
   entries: Array<Omit<OTPEntry, 'id' | 'createdAt' | 'updatedAt'>>;

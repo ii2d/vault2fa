@@ -3,8 +3,8 @@
  * Open-source standard interoperability format for 2FA vaults.
  */
 
-import type { OTPEntry, OTPAlgorithm, OTPType, VaultData, VaultGroup } from '$lib/types';
 import { cleanSecret } from '$lib/core/totp';
+import type { OTPAlgorithm, OTPEntry, OTPType, VaultData, VaultGroup } from '$lib/types';
 
 export interface AegisEntryInfo {
   secret: string;
@@ -102,7 +102,7 @@ export function parseAegisJson(content: string): {
     const digits = item.info.digits === 8 ? 8 : 6;
     const period = item.info.period || 30;
 
-    let groupId: string | undefined = undefined;
+    let groupId: string | undefined;
     if (Array.isArray(item.groups) && item.groups.length > 0) {
       const groupName = item.groups[0];
       if (!groupMap.has(groupName)) {

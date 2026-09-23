@@ -1,16 +1,16 @@
 <script lang="ts">
   import {
-    RotateCcw,
-    Trash2,
     AlertTriangle,
-    Folder,
+    ArrowLeft,
+    Check,
     Eye,
     EyeOff,
-    Check,
-    ArrowLeft,
+    Folder,
+    RotateCcw,
+    Trash2,
   } from '@lucide/svelte';
+  import { formatToken, generateToken } from '$lib/core/totp';
   import { vault } from '$lib/stores';
-  import { generateToken, formatToken } from '$lib/core/totp';
   import type { OTPEntry } from '$lib/types';
 
   let revealedEntries = $state<Record<string, boolean>>({});

@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { vault, formatSyncSummary } from './vault.svelte';
-import type { OTPEntry, VaultData } from '$lib/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
-import { VaultSaltMismatchError, GistSaltMismatchError, getLinkedHandle } from '$lib/core/sync';
+import { GistSaltMismatchError, getLinkedHandle, VaultSaltMismatchError } from '$lib/core/sync';
+import type { OTPEntry, VaultData } from '$lib/types';
+import { formatSyncSummary, vault } from './vault.svelte';
 
 let mockLinkedHandle: FileSystemFileHandle | null = null;
 vi.mock('$lib/core/sync/drivers/local-file', async (importOriginal) => {

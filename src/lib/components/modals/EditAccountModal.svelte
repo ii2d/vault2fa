@@ -1,17 +1,17 @@
 <script lang="ts">
   import {
-    X,
-    Folder,
     ChevronDown,
     ChevronUp,
     Eye,
     EyeOff,
-    Trash2,
-    Save,
+    Folder,
     Pin,
+    Save,
+    Trash2,
+    X,
   } from '@lucide/svelte';
-  import { vault } from '$lib/stores';
   import { cleanSecret, isValidBase32 } from '$lib/core/totp';
+  import { vault } from '$lib/stores';
   import type { OTPAlgorithm, OTPEntry, OTPType } from '$lib/types';
 
   let {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Shield, Plus } from '@lucide/svelte';
+  import { Plus, Shield } from '@lucide/svelte';
 
   let { onOpenAddModal }: { onOpenAddModal: () => void } = $props();
 </script>

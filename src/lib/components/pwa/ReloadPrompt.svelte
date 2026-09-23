@@ -1,12 +1,12 @@
 <script lang="ts">
   import { registerSW } from 'virtual:pwa-register';
-  import { RefreshCw, CheckCircle2, X } from '@lucide/svelte';
+  import { CheckCircle2, RefreshCw, X } from '@lucide/svelte';
   import { APP_CONFIG } from '$lib/config';
 
   let offlineReady = $state(false);
   let needRefresh = $state(false);
 
-  let updateServiceWorker: ((reloadPage?: boolean) => Promise<void>) | undefined = undefined;
+  let updateServiceWorker: ((reloadPage?: boolean) => Promise<void>) | undefined ;
 
   // Initialize service worker registration in browser environment
   if (typeof window !== 'undefined') {

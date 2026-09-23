@@ -1,5 +1,5 @@
-import { db } from '$lib/core/storage';
 import { APP_CONFIG } from '$lib/config';
+import { db } from '$lib/core/storage';
 import { base64ToUint8Array, generateRandomBytes, uint8ArrayToBase64 } from './utils';
 
 /**

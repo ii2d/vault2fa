@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, ShieldCheck, Lock, Database, Globe, GitBranch } from '@lucide/svelte';
+  import { Database, GitBranch, Globe, Lock, ShieldCheck, X } from '@lucide/svelte';
   import { APP_CONFIG } from '$lib/config';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();

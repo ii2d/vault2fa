@@ -1,42 +1,42 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import {
-    Lock,
-    KeyRound,
+    AlertCircle,
+    AlertTriangle,
+    BookOpen,
+    Check,
+    Download,
     Eye,
     EyeOff,
     Fingerprint,
-    AlertCircle,
+    KeyRound,
     Loader2,
-    Upload,
-    AlertTriangle,
+    Lock,
     RotateCcw,
-    Trash2,
-    X,
-    Check,
-    Download,
-    BookOpen,
     ShieldCheck,
+    Trash2,
+    Upload,
+    X,
   } from '@lucide/svelte';
-  import { vault, pwaInstall } from '$lib/stores';
+  import { onMount } from 'svelte';
+  import IncognitoNoticeModal from '$lib/components/modals/IncognitoNoticeModal.svelte';
+  import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
+  import PrivacyModal from '$lib/components/modals/PrivacyModal.svelte';
+  import UserGuideModal from '$lib/components/modals/UserGuideModal.svelte';
+  import { APP_CONFIG } from '$lib/config';
+  import {
+    type BackupFormat,
+    detectBackupFormat,
+    parseEncryptedBackup,
+    parseUnencryptedBackup,
+  } from '$lib/core/backup';
   import {
     authenticateWithBiometrics,
     hasBiometricCredential,
     isBiometricsAvailable,
   } from '$lib/core/crypto';
-  import {
-    detectBackupFormat,
-    parseEncryptedBackup,
-    parseUnencryptedBackup,
-    type BackupFormat,
-  } from '$lib/core/backup';
   import { isPlainTextOtpList } from '$lib/core/totp';
+  import { pwaInstall, vault } from '$lib/stores';
   import type { EncryptedVaultPayload, VaultData } from '$lib/types';
-  import { APP_CONFIG } from '$lib/config';
-  import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
-  import PrivacyModal from '$lib/components/modals/PrivacyModal.svelte';
-  import UserGuideModal from '$lib/components/modals/UserGuideModal.svelte';
-  import IncognitoNoticeModal from '$lib/components/modals/IncognitoNoticeModal.svelte';
 
   let password = $state('');
   let showPassword = $state(false);

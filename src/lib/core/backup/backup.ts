@@ -3,16 +3,20 @@
  * Manages encrypted and unencrypted backups, format detection, and browser downloads.
  */
 
-import type { EncryptedVaultPayload, OTPEntry, VaultData, VaultGroup } from '$lib/types';
-import { isAegisJson, parseAegisJson } from './aegis';
 import {
+  exportToPlainTextUris,
   isPlainTextOtpList,
   parsePlainTextOtpList,
-  exportToPlainTextUris,
 } from '$lib/core/totp/plain-text';
+import type { EncryptedVaultPayload, OTPEntry, VaultData, VaultGroup } from '$lib/types';
+import { isAegisJson, parseAegisJson } from './aegis';
 
 export type BackupFormat =
-  'vault2fa-encrypted' | 'vault2fa-decrypted' | 'aegis' | 'plain-text-uris' | 'unknown';
+  | 'vault2fa-encrypted'
+  | 'vault2fa-decrypted'
+  | 'aegis'
+  | 'plain-text-uris'
+  | 'unknown';
 
 /**
  * Triggers a browser file download with the specified text content.

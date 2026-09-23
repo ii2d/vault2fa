@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Folder, Plus, Check, X, ChevronDown, Trash2 } from '@lucide/svelte';
+  import { Check, ChevronDown, Folder, Plus, Trash2, X } from '@lucide/svelte';
   import { vault } from '$lib/stores';
 
   let isAddingGroup = $state(false);

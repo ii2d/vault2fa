@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import {
-    Pin,
-    Trash2,
-    Copy,
     Check,
-    RefreshCw,
-    Folder,
-    Pencil,
+    ChevronDown,
+    ChevronUp,
+    Copy,
     Eye,
     EyeOff,
     FileText,
-    ChevronDown,
-    ChevronUp,
+    Folder,
+    Pencil,
+    Pin,
+    RefreshCw,
+    Trash2,
   } from '@lucide/svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { formatToken, generateToken, getPeriodRemaining } from '$lib/core/totp';
   import { vault } from '$lib/stores';
   import type { OTPEntry } from '$lib/types';

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { Loader2, Shield } from '@lucide/svelte';
-  import { vault, pwaInstall } from '$lib/stores';
+  import { onMount } from 'svelte';
   import { SetupVault, UnlockVault } from '$lib/components/auth';
-  import { MainVault } from '$lib/components/vault';
   import { AddAccountModal, SettingsModal } from '$lib/components/modals';
   import ReloadPrompt from '$lib/components/pwa/ReloadPrompt.svelte';
+  import { MainVault } from '$lib/components/vault';
   import { APP_CONFIG } from '$lib/config';
+  import { pwaInstall, vault } from '$lib/stores';
 
   let isAddModalOpen = $state(false);
   let isSettingsModalOpen = $state(false);

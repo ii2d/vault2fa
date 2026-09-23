@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { mergeVaultData } from './merge';
+import { describe, expect, it } from 'vitest';
 import type { OTPEntry, VaultData } from '$lib/types';
+import { mergeVaultData } from './merge';
 
 function createMockVault(
   entries: OTPEntry[],

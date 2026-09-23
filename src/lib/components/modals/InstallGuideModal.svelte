@@ -1,19 +1,19 @@
 <script lang="ts">
   import {
-    X,
-    Smartphone,
-    Monitor,
-    Share,
-    PlusSquare,
-    Download,
     CheckCircle2,
-    Sparkles,
-    Shield,
-    WifiOff,
+    Download,
     Fingerprint,
+    Monitor,
+    PlusSquare,
+    Share,
+    Shield,
+    Smartphone,
+    Sparkles,
+    WifiOff,
+    X,
   } from '@lucide/svelte';
-  import { pwaInstall } from '$lib/stores';
   import { APP_CONFIG } from '$lib/config';
+  import { pwaInstall } from '$lib/stores';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 

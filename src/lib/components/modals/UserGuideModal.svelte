@@ -1,18 +1,18 @@
 <script lang="ts">
   import {
-    X,
-    BookOpen,
-    Smartphone,
-    Fingerprint,
-    Cloud,
-    Printer,
-    Download,
-    CheckCircle2,
-    ArrowRightLeft,
     AlertTriangle,
+    ArrowRightLeft,
+    BookOpen,
+    CheckCircle2,
+    Cloud,
+    Download,
+    Fingerprint,
+    Printer,
+    Smartphone,
+    X,
   } from '@lucide/svelte';
-  import { pwaInstall } from '$lib/stores';
   import { APP_CONFIG } from '$lib/config';
+  import { pwaInstall } from '$lib/stores';
   import InstallGuideModal from './InstallGuideModal.svelte';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();

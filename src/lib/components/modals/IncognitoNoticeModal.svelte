@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, AlertTriangle, ShieldCheck, HardDrive, CheckCircle2 } from '@lucide/svelte';
+  import { AlertTriangle, CheckCircle2, HardDrive, ShieldCheck, X } from '@lucide/svelte';
   import { APP_CONFIG } from '$lib/config';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();

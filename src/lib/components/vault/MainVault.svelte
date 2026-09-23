@@ -1,14 +1,14 @@
 <script lang="ts">
   import { Search } from '@lucide/svelte';
+  import { EditAccountModal } from '$lib/components/modals';
   import { vault } from '$lib/stores';
   import type { OTPEntry } from '$lib/types';
-  import VaultHeader from './VaultHeader.svelte';
-  import GroupFilterBar from './GroupFilterBar.svelte';
-  import TokenCard from './TokenCard.svelte';
-  import EmptyVault from './EmptyVault.svelte';
   import DeletedSecretsView from './DeletedSecretsView.svelte';
+  import EmptyVault from './EmptyVault.svelte';
+  import GroupFilterBar from './GroupFilterBar.svelte';
   import SyncToast from './SyncToast.svelte';
-  import { EditAccountModal } from '$lib/components/modals';
+  import TokenCard from './TokenCard.svelte';
+  import VaultHeader from './VaultHeader.svelte';
 
   let {
     onOpenAddModal,

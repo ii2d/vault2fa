@@ -1,72 +1,72 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import {
-    X,
-    Fingerprint,
-    Lock,
-    KeyRound,
-    Download,
-    Upload,
-    Shield,
     AlertTriangle,
-    Loader2,
-    Info,
-    FileCode,
-    FileText,
-    Cloud,
-    HardDrive,
-    QrCode,
+    BookOpen,
+    Camera,
     Check,
+    Cloud,
+    Download,
+    ExternalLink,
     Eye,
     EyeOff,
-    ExternalLink,
-    Unlink,
-    RefreshCw,
-    Camera,
-    ShieldAlert,
+    FileCode,
+    FileText,
+    Fingerprint,
+    HardDrive,
+    Info,
+    KeyRound,
+    Loader2,
+    Lock,
     Printer,
-    BookOpen,
-    ShieldCheck,
+    QrCode,
+    RefreshCw,
     RotateCcw,
+    Shield,
+    ShieldAlert,
+    ShieldCheck,
+    Unlink,
+    Upload,
+    X,
   } from '@lucide/svelte';
-  import { vault } from '$lib/stores';
+  import { onMount } from 'svelte';
+  import { SyncConfigScanModal, SyncConfigShareModal } from '$lib/components/sync';
+  import { APP_CONFIG } from '$lib/config';
   import {
-    isBiometricsAvailable,
+    detectBackupFormat,
+    downloadTextFile,
+    exportDecryptedBackup,
+    exportEncryptedBackup,
+    exportPlainTextBackup,
+    exportToAegisJson,
+    parseEncryptedBackup,
+    parseUnencryptedBackup,
+  } from '$lib/core/backup';
+  import {
     hasBiometricCredential,
+    isBiometricsAvailable,
     registerBiometricUnlock,
     removeBiometricUnlock,
   } from '$lib/core/crypto/biometrics';
   import {
-    downloadTextFile,
-    exportEncryptedBackup,
-    exportDecryptedBackup,
-    exportToAegisJson,
-    exportPlainTextBackup,
-    detectBackupFormat,
-    parseUnencryptedBackup,
-    parseEncryptedBackup,
-  } from '$lib/core/backup';
+    createLocalVaultFile,
+    formatSyncResult,
+    GistSaltMismatchError,
+    getLinkedHandle,
+    isFileSystemAccessSupported,
+    parseSyncConfigQr,
+    pickLocalVaultFile,
+    uncheckLinkedHandle,
+    VaultSaltMismatchError,
+    validateGitHubToken,
+  } from '$lib/core/sync';
   import { isPlainTextOtpList } from '$lib/core/totp';
-  import { SyncConfigShareModal, SyncConfigScanModal } from '$lib/components/sync';
-  import RecoveryKitModal from './RecoveryKitModal.svelte';
+  import { vault } from '$lib/stores';
+  import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
+  import IncognitoNoticeModal from './IncognitoNoticeModal.svelte';
   import InstallGuideModal from './InstallGuideModal.svelte';
   import PrivacyModal from './PrivacyModal.svelte';
+  import RecoveryKitModal from './RecoveryKitModal.svelte';
   import UserGuideModal from './UserGuideModal.svelte';
-  import IncognitoNoticeModal from './IncognitoNoticeModal.svelte';
-  import { APP_CONFIG } from '$lib/config';
-  import {
-    isFileSystemAccessSupported,
-    pickLocalVaultFile,
-    createLocalVaultFile,
-    getLinkedHandle,
-    uncheckLinkedHandle,
-    validateGitHubToken,
-    VaultSaltMismatchError,
-    GistSaltMismatchError,
-    parseSyncConfigQr,
-    formatSyncResult,
-  } from '$lib/core/sync';
-  import type { EncryptedVaultPayload, GistSyncConfig } from '$lib/types';
 
   let {
     isOpen,

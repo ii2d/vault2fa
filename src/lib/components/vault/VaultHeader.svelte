@@ -1,21 +1,21 @@
 <script lang="ts">
   import {
-    Shield,
-    Lock,
-    Plus,
-    Search,
     Clock,
-    X,
-    Settings,
     Cloud,
-    RefreshCw,
     Download,
     Eye,
     EyeOff,
+    Lock,
+    Plus,
+    RefreshCw,
+    Search,
+    Settings,
+    Shield,
+    X,
   } from '@lucide/svelte';
-  import { vault, pwaInstall } from '$lib/stores';
-  import { APP_CONFIG } from '$lib/config';
   import InstallGuideModal from '$lib/components/modals/InstallGuideModal.svelte';
+  import { APP_CONFIG } from '$lib/config';
+  import { pwaInstall, vault } from '$lib/stores';
 
   let {
     onOpenAddModal,

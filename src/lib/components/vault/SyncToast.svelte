@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Cloud, X } from '@lucide/svelte';
-  import { vault } from '$lib/stores';
   import { fly } from 'svelte/transition';
+  import { vault } from '$lib/stores';
 </script>
 
 {#if vault.syncToast}

@@ -4,7 +4,7 @@
  */
 
 import { Secret } from 'otpauth';
-import type { OTPEntry, OTPAlgorithm, OTPType } from '$lib/types';
+import type { OTPAlgorithm, OTPEntry, OTPType } from '$lib/types';
 
 export interface MigrationAccount {
   name: string;

@@ -1,9 +1,9 @@
-import { db } from '$lib/core/storage';
 import { encryptVault } from '$lib/core/crypto';
-import { mergeVaultData } from '$lib/core/sync/merge';
+import { db } from '$lib/core/storage';
 import { VaultSaltMismatchError } from '$lib/core/sync/errors';
-import { decryptRemotePayload, type SyncDriverResult } from './common';
+import { mergeVaultData } from '$lib/core/sync/merge';
 import type { EncryptedVaultPayload, KeyDerivationParams, VaultData } from '$lib/types';
+import { decryptRemotePayload, type SyncDriverResult } from './common';
 
 export type LocalFileSyncResult = SyncDriverResult;
 

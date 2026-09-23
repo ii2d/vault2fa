@@ -1,14 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { isAegisJson, parseAegisJson, exportToAegisJson } from './aegis';
+import { describe, expect, it } from 'vitest';
+import type { EncryptedVaultPayload, VaultData } from '$lib/types';
+import { exportToAegisJson, isAegisJson, parseAegisJson } from './aegis';
 import {
   detectBackupFormat,
-  exportEncryptedBackup,
   exportDecryptedBackup,
-  parseUnencryptedBackup,
+  exportEncryptedBackup,
   parseEncryptedBackup,
+  parseUnencryptedBackup,
 } from './backup';
-
-import type { VaultData, EncryptedVaultPayload } from '$lib/types';
 
 describe('Aegis Interoperability', () => {
   const sampleAegisJson = JSON.stringify({
