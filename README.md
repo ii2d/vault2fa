@@ -65,6 +65,20 @@ VITE_APP_REPO_URL="https://github.com/ii2d/vault2fa"
 
 To deploy your own copy for free on **GitHub Pages**, fork the repo and enable GitHub Actions under **Settings > Pages**.
 
+### 🧪 Code Quality & Pre-Commit Hook
+
+Pre-commit git hooks automatically format and lint staged files via `lint-staged` and run unit tests prior to committing:
+
+```bash
+pnpm run check        # Type check TypeScript and Svelte diagnostics
+pnpm run lint         # Check code with ESLint
+pnpm run lint:fix     # Automatically fix ESLint violations
+pnpm run format       # Format codebase with Prettier
+pnpm run format:check # Verify Prettier formatting
+pnpm run test         # Run Vitest test suite
+pnpm run pre-commit   # Run lint-staged on demand
+```
+
 ---
 
 ## 🔒 Security & Threat Model
