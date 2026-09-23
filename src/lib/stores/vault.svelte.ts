@@ -808,15 +808,7 @@ class VaultStore {
     await this.persistData(finalData);
     this.syncStatus = 'synced';
 
-    const hasAnyChange =
-      result.entriesAdded > 0 ||
-      result.entriesUpdated > 0 ||
-      result.entriesSoftDeleted > 0 ||
-      result.entriesPurged > 0;
-
-    if (hasAnyChange || !this.lastSyncResult) {
-      this.setLastSyncResult(provider, result);
-    }
+    this.setLastSyncResult(provider, result);
     if (result.hasChanges && this.lastSyncResult) {
       this.showSyncToast(this.lastSyncResult.summary);
     }
@@ -1060,6 +1052,17 @@ class VaultStore {
       this.syncStatus = 'synced';
       const providerNames = syncedProviders.join(' & ');
       if (!hadChanges) {
+        if (syncedProviders.length > 0) {
+          const mainProvider = syncedProviders.includes('GitHub Gist')
+            ? 'github-gist'
+            : 'local-file';
+          this.setLastSyncResult(mainProvider, {
+            entriesAdded: 0,
+            entriesUpdated: 0,
+            entriesSoftDeleted: 0,
+            entriesPurged: 0,
+          });
+        }
         this.showSyncToast(`Synced with ${providerNames} (up to date)`);
       }
 

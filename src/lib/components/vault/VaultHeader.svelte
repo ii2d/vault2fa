@@ -152,9 +152,7 @@
         <span class="hidden text-rose-400 md:inline">Sync Error</span>
       {:else if isSyncConfigured}
         <Cloud class="h-3.5 w-3.5 text-emerald-400" />
-        <span class="hidden text-emerald-400 md:inline"
-          >{vault.lastSyncResult ? vault.lastSyncResult.badgeText : 'Synced'}</span
-        >
+        <span class="hidden text-emerald-400 md:inline">Synced</span>
       {:else}
         <Cloud class="h-3.5 w-3.5 text-zinc-500" />
         <span class="hidden text-zinc-400 md:inline">Sync Off</span>
