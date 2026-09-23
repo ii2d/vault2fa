@@ -41,6 +41,50 @@
     const secs = totalSec % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   });
+
+  const isSyncConfigured = $derived.by(() => {
+    const s = vault.data?.settings;
+    if (!s) return false;
+    const hasGist = Boolean(s.gistSync?.token?.trim());
+    const hasLocal = Boolean(s.localFileSync);
+    const hasProvider = Boolean(s.syncProvider && s.syncProvider !== 'none');
+    return hasGist || hasLocal || hasProvider;
+  });
+
+  const syncButtonTitle = $derived.by(() => {
+    if (vault.syncStatus === 'syncing') {
+      return 'Syncing across storage mediums...';
+    }
+    if (vault.syncStatus === 'error') {
+      return `Sync Error: ${vault.syncError || 'Sync failed'}. Click to retry sync or configure in Settings.`;
+    }
+    if (isSyncConfigured) {
+      const summary = vault.lastSyncResult?.summary;
+      const timeStr = vault.lastSyncResult?.timestamp
+        ? ` (${new Date(vault.lastSyncResult.timestamp).toLocaleTimeString()})`
+        : '';
+      return `${summary ? summary + timeStr + '. ' : ''}Click to sync all storage mediums now.`;
+    }
+    return 'Sync is not configured. Click to open Settings and configure backup / sync.';
+  });
+
+  async function handleSyncClick() {
+    if (vault.syncStatus === 'syncing') return;
+
+    if (!isSyncConfigured) {
+      onOpenSettingsModal();
+      return;
+    }
+
+    try {
+      const result = await vault.syncAll();
+      if (!result.synced && result.reason === 'no-provider') {
+        onOpenSettingsModal();
+      }
+    } catch (err: unknown) {
+      console.error('Manual sync failed:', err);
+    }
+  }
 </script>
 
 <header
@@ -91,31 +135,29 @@
 
   <!-- Actions: Auto-lock status, Lock button, Add button -->
   <div class="order-2 flex items-center gap-2.5 sm:order-3">
-    <!-- Sync Status Badge -->
+    <!-- Sync Status & Manual Sync Trigger -->
     <button
       type="button"
-      onclick={onOpenSettingsModal}
-      class="hidden items-center gap-1.5 rounded-xl border border-white/5 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-white/10 hover:text-zinc-200 lg:flex"
-      title={vault.lastSyncResult
-        ? `${vault.lastSyncResult.summary} (${new Date(vault.lastSyncResult.timestamp).toLocaleTimeString()}). Click to manage sync.`
-        : vault.data?.settings.syncProvider && vault.data.settings.syncProvider !== 'none'
-          ? `Sync Active (${vault.data.settings.syncProvider}). Click to manage sync.`
-          : 'Setup decentralized sync or backup.'}
+      onclick={handleSyncClick}
+      disabled={vault.syncStatus === 'syncing'}
+      class="flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition hover:bg-zinc-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+      title={syncButtonTitle}
+      aria-label="Synchronize storage mediums"
     >
       {#if vault.syncStatus === 'syncing'}
         <RefreshCw class="h-3.5 w-3.5 animate-spin text-indigo-400" />
-        <span class="text-indigo-400">Syncing...</span>
+        <span class="hidden text-indigo-400 md:inline">Syncing...</span>
       {:else if vault.syncStatus === 'error'}
         <span class="h-2 w-2 rounded-full bg-rose-500"></span>
-        <span class="text-rose-400">Sync Error</span>
-      {:else if vault.data?.settings.syncProvider && vault.data.settings.syncProvider !== 'none'}
+        <span class="hidden text-rose-400 md:inline">Sync Error</span>
+      {:else if isSyncConfigured}
         <Cloud class="h-3.5 w-3.5 text-emerald-400" />
-        <span class="text-emerald-400"
+        <span class="hidden text-emerald-400 md:inline"
           >{vault.lastSyncResult ? vault.lastSyncResult.badgeText : 'Synced'}</span
         >
       {:else}
         <Cloud class="h-3.5 w-3.5 text-zinc-500" />
-        <span class="text-zinc-400">Sync Off</span>
+        <span class="hidden text-zinc-400 md:inline">Sync Off</span>
       {/if}
     </button>
 
