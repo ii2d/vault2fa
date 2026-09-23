@@ -311,7 +311,10 @@ class VaultStore {
    * Immediately clears sensitive keys and decrypted data from memory.
    */
   lockVault(): void {
-    this.masterKey = null;
+    if (this.masterKey) {
+      this.masterKey.fill(0);
+      this.masterKey = null;
+    }
     this.data = null;
     this.status = 'locked';
     this.syncToast = null;
@@ -614,6 +617,9 @@ class VaultStore {
     await db.saveEncryptedVault(newPayload);
 
     this.cachedPayload = newPayload;
+    if (this.masterKey) {
+      this.masterKey.fill(0);
+    }
     this.masterKey = newKeyBytes;
   }
 
