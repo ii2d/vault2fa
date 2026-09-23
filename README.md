@@ -17,10 +17,10 @@
 - 🔒 **Zero-Knowledge Encryption**: Argon2id WASM key derivation + hardware-accelerated AES-256-GCM (`crypto.subtle`).
 - ⚡ **Ultra-Fast (Svelte 5)**: Lightweight footprint with fine-grained reactivity and instant app startup.
 - 📱 **Offline PWA**: Full offline functionality and installable on iOS, Android, macOS, Windows, and Linux.
-- 🔑 **Biometric Unlock**: WebAuthn / Passkey support (Touch ID, Face ID, Windows Hello, YubiKey).
+- 🔑 **Hardware-Backed Biometrics**: Secure Enclave unlock via WebAuthn PRF extension (Touch ID, Face ID, Windows Hello, YubiKey).
 - 🔄 **Decentralized Sync**: Local File System binding (iCloud/Dropbox/Syncthing) or encrypted GitHub Gist sync with QR pairing.
 - 📦 **Broad Import & Export**: One-click import from Google Authenticator, Aegis, Bitwarden, and plain URI lists, plus printable Recovery Kits.
-- 🛡️ **Zero Tracking**: 100% client-side with zero telemetry and zero server dependencies.
+- 🛡️ **Zero Tracking & Egress Control**: Strict Content Security Policy (CSP), zero telemetry, sanitized backup exports, and zero server dependencies.
 
 ---
 
@@ -28,7 +28,7 @@
 
 - **Framework**: [Svelte 5](https://svelte.dev/) + [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
-- **Cryptography**: Native Web Crypto API (AES-256-GCM) & [`hash-wasm`](https://github.com/Daninet/hash-wasm) (Argon2id)
+- **Cryptography**: Native Web Crypto API (AES-256-GCM, HKDF), WebAuthn PRF & [`hash-wasm`](https://github.com/Daninet/hash-wasm) (Argon2id)
 - **TOTP Engine**: [`otpauth`](https://github.com/hectorm/otpauth)
 - **Storage**: Sandboxed IndexedDB via [`dexie`](https://dexie.org/)
 - **PWA**: [`vite-plugin-pwa`](https://vite-pwa-org.netlify.app/)
