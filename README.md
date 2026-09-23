@@ -4,6 +4,7 @@
 
 [![Version](https://img.shields.io/github/package-json/v/ii2d/vault2fa?color=blue)](package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Security: Threat Model](https://img.shields.io/badge/Security-Threat%20Model-purple.svg)](SECURITY.md)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5.0-orange?logo=svelte)](https://svelte.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![PWA](https://img.shields.io/badge/PWA-Offline%20First-emerald?logo=pwa)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
@@ -62,6 +63,12 @@ VITE_APP_REPO_URL="https://github.com/ii2d/vault2fa"
 ```
 
 To deploy your own copy for free on **GitHub Pages**, fork the repo and enable GitHub Actions under **Settings > Pages**.
+
+---
+
+## 🔒 Security & Threat Model
+
+For a detailed breakdown of our cryptographic primitives, key derivation parameters, hardware biometric wrapping via WebAuthn PRF, in-scope threat mitigations, and responsible vulnerability disclosure policy, please see our dedicated [**SECURITY.md**](SECURITY.md).
 
 ---
 
