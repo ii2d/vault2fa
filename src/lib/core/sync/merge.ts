@@ -5,7 +5,8 @@ export interface MergeResult {
   hasChanges: boolean;
   entriesAdded: number;
   entriesUpdated: number;
-  entriesDeleted: number;
+  entriesSoftDeleted: number;
+  entriesPurged: number;
 }
 
 export interface MergeOptions {
@@ -50,7 +51,8 @@ export function mergeVaultData(
   const mergedEntries: OTPEntry[] = [];
   let entriesAdded = 0;
   let entriesUpdated = 0;
-  let entriesDeleted = 0;
+  let entriesSoftDeleted = 0;
+  let entriesPurged = 0;
 
   for (const id of allIds) {
     const localEntry = localMap.get(id);
@@ -61,11 +63,24 @@ export function mergeVaultData(
     if (localEntry && remoteEntry) {
       const winner = remoteEntry.updatedAt > localEntry.updatedAt ? remoteEntry : localEntry;
       if (tombstoneDeletedAt !== undefined && tombstoneDeletedAt >= winner.updatedAt) {
-        // Deleted by tombstone
-        entriesDeleted++;
+        // Permanently purged by tombstone
+        entriesPurged++;
       } else {
         mergedEntries.push(winner);
-        if (winner === remoteEntry && remoteEntry.updatedAt > localEntry.updatedAt) {
+
+        // Check if soft-deletion state transitioned
+        const localIsSoftDeleted = Boolean(localEntry.deletedAt);
+        const remoteIsSoftDeleted = Boolean(remoteEntry.deletedAt);
+
+        if (localIsSoftDeleted !== remoteIsSoftDeleted) {
+          if (winner.deletedAt) {
+            // One side soft-deleted this entry and won
+            entriesSoftDeleted++;
+          } else {
+            // One side restored this entry and won
+            entriesUpdated++;
+          }
+        } else if (localEntry.updatedAt !== remoteEntry.updatedAt) {
           entriesUpdated++;
         }
       }
@@ -75,10 +90,15 @@ export function mergeVaultData(
     // Case B: Entry only exists in local
     if (localEntry) {
       if (tombstoneDeletedAt !== undefined && tombstoneDeletedAt >= localEntry.updatedAt) {
-        // Remote deleted this entry
-        entriesDeleted++;
+        // Permanently purged by remote tombstone
+        entriesPurged++;
       } else {
         mergedEntries.push(localEntry);
+        if (localEntry.deletedAt) {
+          entriesSoftDeleted++;
+        } else {
+          entriesAdded++;
+        }
       }
       continue;
     }
@@ -86,11 +106,15 @@ export function mergeVaultData(
     // Case C: Entry only exists in remote
     if (remoteEntry) {
       if (tombstoneDeletedAt !== undefined && tombstoneDeletedAt >= remoteEntry.updatedAt) {
-        // Local deleted this entry
-        entriesDeleted++;
+        // Permanently purged by local tombstone
+        entriesPurged++;
       } else {
         mergedEntries.push(remoteEntry);
-        entriesAdded++;
+        if (remoteEntry.deletedAt) {
+          entriesSoftDeleted++;
+        } else {
+          entriesAdded++;
+        }
       }
       continue;
     }
@@ -126,11 +150,19 @@ export function mergeVaultData(
     localFileSync: local.settings.localFileSync ?? remote.settings.localFileSync,
   };
 
+  const groupsChanged =
+    mergedGroups.length !== local.groups.length ||
+    local.groups.some((g) => {
+      const match = groupMap.get(g.id);
+      return !match || match.name !== g.name;
+    });
+
   const hasChanges =
     entriesAdded > 0 ||
     entriesUpdated > 0 ||
-    entriesDeleted > 0 ||
-    mergedGroups.length !== local.groups.length;
+    entriesSoftDeleted > 0 ||
+    entriesPurged > 0 ||
+    groupsChanged;
 
   const mergedVault: VaultData = {
     version: Math.max(local.version, remote.version, 1),
@@ -146,6 +178,70 @@ export function mergeVaultData(
     hasChanges,
     entriesAdded,
     entriesUpdated,
-    entriesDeleted,
+    entriesSoftDeleted,
+    entriesPurged,
+  };
+}
+
+export interface FormatSyncOptions {
+  providerName?: string;
+  vaultData?: VaultData;
+}
+
+/**
+ * Formats human-readable sync feedback summaries and badge counters.
+ */
+export function formatSyncResult(
+  counts: {
+    entriesAdded: number;
+    entriesUpdated: number;
+    entriesSoftDeleted: number;
+    entriesPurged: number;
+  },
+  options: FormatSyncOptions = {},
+): { summary: string; badgeText: string } {
+  const parts: string[] = [];
+  if (counts.entriesAdded > 0) parts.push(`${counts.entriesAdded} added`);
+  if (counts.entriesUpdated > 0) parts.push(`${counts.entriesUpdated} updated`);
+  if (counts.entriesSoftDeleted > 0) parts.push(`${counts.entriesSoftDeleted} soft-deleted`);
+  if (counts.entriesPurged > 0) parts.push(`${counts.entriesPurged} permanently deleted`);
+
+  const prefix = options.providerName ? `Synced with ${options.providerName}: ` : 'Synced: ';
+
+  if (parts.length > 0) {
+    const badgeParts: string[] = [];
+    if (counts.entriesAdded > 0) badgeParts.push(`+${counts.entriesAdded}`);
+    if (counts.entriesUpdated > 0) badgeParts.push(`~${counts.entriesUpdated}`);
+    if (counts.entriesSoftDeleted > 0) badgeParts.push(`-${counts.entriesSoftDeleted}`);
+    if (counts.entriesPurged > 0) badgeParts.push(`✕${counts.entriesPurged}`);
+
+    return {
+      summary: `${prefix}${parts.join(', ')}`,
+      badgeText: `Synced (${badgeParts.join(', ')})`,
+    };
+  }
+
+  // If no direct changes, summarize existing vault accounts if available
+  if (options.vaultData) {
+    const activeCount = options.vaultData.entries.filter((e) => !e.deletedAt).length;
+    const softDeletedCount = options.vaultData.entries.filter((e) => Boolean(e.deletedAt)).length;
+    const vaultParts: string[] = [];
+    if (activeCount > 0) vaultParts.push(`${activeCount} active`);
+    if (softDeletedCount > 0) vaultParts.push(`${softDeletedCount} soft-deleted`);
+
+    const summaryText = vaultParts.length > 0 ? vaultParts.join(', ') : '0 accounts';
+    return {
+      summary: options.providerName
+        ? `${options.providerName} has updated (${summaryText})`
+        : `Synced (${summaryText})`,
+      badgeText: 'Synced',
+    };
+  }
+
+  return {
+    summary: options.providerName
+      ? `${options.providerName} has updated (up to date)`
+      : 'Synced (up to date)',
+    badgeText: 'Synced',
   };
 }

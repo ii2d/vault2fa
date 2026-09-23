@@ -103,20 +103,28 @@ describe('GitHub Gist Sync Driver', () => {
       ciphertext: 'testciphertext',
     };
 
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        files: {
-          'vault2fa-encrypted.json': {
-            content: JSON.stringify(payload),
+    let requestedUrl = '';
+    let requestInit: RequestInit | undefined;
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      requestedUrl = url;
+      requestInit = init;
+      return {
+        ok: true,
+        json: async () => ({
+          files: {
+            'vault2fa-encrypted.json': {
+              content: JSON.stringify(payload),
+            },
           },
-        },
-      }),
-    } as Response);
+        }),
+      } as Response;
+    });
 
     const fetched = await fetchGistPayload('ghp_token', 'gist-123');
     expect(fetched.format).toBe('vault2fa-v1');
     expect(fetched.ciphertext).toBe('testciphertext');
+    expect(requestedUrl).toContain('https://api.github.com/gists/gist-123?_t=');
+    expect(requestInit?.cache).toBe('no-store');
   });
 
   it('updates existing Gist with payload', async () => {
@@ -196,7 +204,80 @@ describe('GitHub Gist Sync Driver', () => {
     const result = await syncVaultWithGist('ghp_token', 'gist-123', mockVault, mockMasterKey, kdf);
     expect(result.syncedVault.entries.length).toBe(2);
     expect(result.entriesAdded).toBe(1);
+    expect(result.entriesUpdated).toBe(0);
+    expect(result.entriesSoftDeleted).toBe(0);
+    expect(result.entriesPurged).toBe(0);
     expect(result.syncedVault.entries.map((e) => e.issuer).sort()).toEqual(['GitHub', 'Google']);
+  });
+
+  it('does not send PATCH request when there are no changes between local and remote', async () => {
+    const kdf = generateKdfParams();
+    const encryptedRemote = await encryptVault(mockVault, mockMasterKey, kdf);
+    let patchCalled = false;
+
+    globalThis.fetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (!init?.method || init.method === 'GET') {
+        return {
+          ok: true,
+          json: async () => ({
+            files: {
+              'vault2fa-encrypted.json': {
+                content: JSON.stringify(encryptedRemote),
+              },
+            },
+          }),
+        } as Response;
+      }
+      if (init?.method === 'PATCH') {
+        patchCalled = true;
+        return { ok: true, json: async () => ({ id: 'gist-123' }) } as Response;
+      }
+      throw new Error('Unexpected');
+    });
+
+    const result = await syncVaultWithGist('ghp_token', 'gist-123', mockVault, mockMasterKey, kdf);
+    expect(result.hasChanges).toBe(false);
+    expect(patchCalled).toBe(false);
+  });
+
+  it('reports correct counts on initial gist creation', async () => {
+    let createdPayload: EncryptedVaultPayload | null = null;
+    globalThis.fetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        const body = JSON.parse(init.body as string);
+        createdPayload = JSON.parse(body.files['vault2fa-encrypted.json'].content);
+        return { ok: true, json: async () => ({ id: 'new-gist-id' }) } as Response;
+      }
+      throw new Error('Unexpected');
+    });
+
+    const kdf = generateKdfParams();
+    const vaultWithDeleted: VaultData = {
+      ...mockVault,
+      entries: [
+        ...mockVault.entries,
+        {
+          id: 'token-deleted',
+          issuer: 'OldService',
+          label: 'old@test.com',
+          secret: 'JBSWY3DPEHPK3PXP',
+          type: 'totp',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          createdAt: 500,
+          updatedAt: 600,
+          deletedAt: 600,
+        },
+      ],
+    };
+
+    const result = await syncVaultWithGist('ghp_token', '', vaultWithDeleted, mockMasterKey, kdf);
+    expect(result.entriesAdded).toBe(1); // 1 active entry
+    expect(result.entriesSoftDeleted).toBe(1); // 1 soft-deleted entry
+    expect(result.entriesUpdated).toBe(0);
+    expect(result.entriesPurged).toBe(0);
+    expect(createdPayload).not.toBeNull();
   });
 
   it('encodes and parses Gist sync config QR URI', () => {

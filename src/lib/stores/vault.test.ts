@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { vault } from './vault.svelte';
+import { vault, formatSyncSummary } from './vault.svelte';
 import type { OTPEntry, VaultData } from '$lib/types';
 import { deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
 import { VaultSaltMismatchError, GistSaltMismatchError, getLinkedHandle } from '$lib/core/sync';
@@ -367,7 +367,12 @@ describe('VaultStore group filtering', () => {
 
     // 4. Syncing with remote password should succeed, merge entries, and adopt remote credentials
     const mergeResult = await vault.syncWithLocalFile(mockHandle, remotePassword);
-    expect(mergeResult.entriesAdded).toBe(1);
+    expect(mergeResult.entriesAdded).toBe(2);
+    expect(mergeResult.entriesUpdated).toBe(0);
+    expect(mergeResult.entriesSoftDeleted).toBe(0);
+    expect(mergeResult.entriesPurged).toBe(0);
+    expect(vault.lastSyncResult?.entriesAdded).toBe(2);
+    expect(vault.syncToast?.message).toContain('2 added');
     expect(vault.entries.length).toBe(2);
     expect(vault.entries.map((e) => e.issuer)).toEqual(
       expect.arrayContaining(['LocalIssuer', 'RemoteIssuer']),
@@ -519,7 +524,12 @@ describe('VaultStore group filtering', () => {
 
     // 2. With password, succeeds and adopts remote credentials
     const result = await vault.syncWithGist(remotePassword);
-    expect(result.entriesAdded).toBe(1);
+    expect(result.entriesAdded).toBe(2);
+    expect(result.entriesUpdated).toBe(0);
+    expect(result.entriesSoftDeleted).toBe(0);
+    expect(result.entriesPurged).toBe(0);
+    expect(vault.lastSyncResult?.entriesAdded).toBe(2);
+    expect(vault.syncToast?.message).toContain('2 added');
     expect(vault.entries.length).toBe(2);
     expect(vault.getKdfParams().salt).toBe(remoteKdf.salt);
   });
@@ -637,5 +647,84 @@ describe('VaultStore soft delete, restore, and purge operations', () => {
     expect(vault.data?.entries.length).toBe(0);
     expect(vault.deletedEntriesCount).toBe(0);
     expect(vault.data?.tombstones?.length).toBe(2);
+  });
+});
+
+describe('VaultStore sync status & toast notifications', () => {
+  it('formats sync summary correctly for various counts', () => {
+    const noChanges = formatSyncSummary(
+      {
+        entriesAdded: 0,
+        entriesUpdated: 0,
+        entriesSoftDeleted: 0,
+        entriesPurged: 0,
+      },
+      'GitHub Gist',
+    );
+    expect(noChanges.summary).toBe('GitHub Gist has updated (up to date)');
+    expect(noChanges.badgeText).toBe('Synced');
+
+    const addedOnly = formatSyncSummary(
+      {
+        entriesAdded: 2,
+        entriesUpdated: 0,
+        entriesSoftDeleted: 0,
+        entriesPurged: 0,
+      },
+      'GitHub Gist',
+    );
+    expect(addedOnly.summary).toBe('Synced with GitHub Gist: 2 added');
+    expect(addedOnly.badgeText).toBe('Synced (+2)');
+
+    const combined = formatSyncSummary({
+      entriesAdded: 1,
+      entriesUpdated: 3,
+      entriesSoftDeleted: 2,
+      entriesPurged: 1,
+    });
+    expect(combined.summary).toBe(
+      'Synced: 1 added, 3 updated, 2 soft-deleted, 1 permanently deleted',
+    );
+    expect(combined.badgeText).toBe('Synced (+1, ~3, -2, ✕1)');
+  });
+
+  it('shows and dismisses sync toasts', () => {
+    vault.showSyncToast('Test toast');
+    expect(vault.syncToast?.message).toBe('Test toast');
+
+    vault.dismissSyncToast();
+    expect(vault.syncToast).toBeNull();
+  });
+
+  it('syncs with Gist using config override in a single pass', async () => {
+    globalThis.fetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return { ok: true, json: async () => ({ id: 'new-gist-123' }) } as Response;
+      }
+      throw new Error('Unexpected');
+    });
+
+    await vault.initVault('TestPassword123!');
+    const entry = await vault.addEntry({
+      issuer: 'Test',
+      label: 'test@example.com',
+      secret: 'JBSWY3DPEHPK3PXP',
+      type: 'totp',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+    });
+    await vault.deleteEntry(entry.id);
+
+    const result = await vault.syncWithGist({
+      token: 'ghp_token123',
+      gistId: '',
+      autoSync: true,
+    });
+
+    expect(result.entriesSoftDeleted).toBe(1);
+    expect(vault.data?.settings.gistSync?.token).toBe('ghp_token123');
+    expect(vault.data?.settings.gistSync?.gistId).toBe('new-gist-123');
+    expect(vault.lastSyncResult?.entriesSoftDeleted).toBe(1);
   });
 });

@@ -2,16 +2,17 @@ import { SvelteSet } from 'svelte/reactivity';
 import { decryptVault, deriveMasterKey, encryptVault, generateKdfParams } from '$lib/core/crypto';
 import { db } from '$lib/core/storage';
 import {
+  formatSyncResult,
   mergeVaultData,
-  type MergeResult,
   getLinkedHandle,
   storeLinkedHandle,
   writeVaultToFileHandle,
-  readVaultFromFileHandle,
-  updateGistPayload,
   syncVaultWithGist,
+  syncVaultWithLocalFile,
   type GistSyncResult,
-  VaultSaltMismatchError,
+  type LocalFileSyncResult,
+  type SyncDriverResult,
+  type MergeResult,
 } from '$lib/core/sync';
 import type {
   EncryptedVaultPayload,
@@ -25,6 +26,29 @@ import type {
 
 export type VaultStatus = 'loading' | 'uninitialized' | 'locked' | 'unlocked';
 export type VaultSyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
+
+export interface VaultSyncResultSummary {
+  provider: 'local-file' | 'github-gist';
+  timestamp: number;
+  entriesAdded: number;
+  entriesUpdated: number;
+  entriesSoftDeleted: number;
+  entriesPurged: number;
+  summary: string;
+  badgeText: string;
+}
+
+export function formatSyncSummary(
+  counts: {
+    entriesAdded: number;
+    entriesUpdated: number;
+    entriesSoftDeleted: number;
+    entriesPurged: number;
+  },
+  providerName?: string,
+): { summary: string; badgeText: string } {
+  return formatSyncResult(counts, { providerName });
+}
 
 export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   autoLockTimeoutMinutes: 5,
@@ -43,12 +67,16 @@ class VaultStore {
   autoLockSecondsLeft = $state<number>(300);
   syncStatus = $state<VaultSyncStatus>('idle');
   syncError = $state<string | null>(null);
+  lastSyncResult = $state<VaultSyncResultSummary | null>(null);
+  syncToast = $state<{ message: string; timestamp: number } | null>(null);
 
+  private syncToastTimeout: ReturnType<typeof setTimeout> | null = null;
   private masterKey: Uint8Array | null = null;
   private cachedPayload: EncryptedVaultPayload | null = null;
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private lastActivityTimestamp = Date.now();
   private isAutoSyncing = false;
+  private lastAutoSyncTimestamp = 0;
 
   /**
    * Filtered and sorted 2FA entries based on active group, search query, and pinned status.
@@ -108,6 +136,60 @@ class VaultStore {
   isUnlocked = $derived(this.status === 'unlocked');
   isLocked = $derived(this.status === 'locked');
   isUninitialized = $derived(this.status === 'uninitialized');
+
+  /**
+   * Displays a temporary sync toast notification.
+   */
+  showSyncToast(message: string): void {
+    if (this.syncToastTimeout) {
+      clearTimeout(this.syncToastTimeout);
+      this.syncToastTimeout = null;
+    }
+    this.syncToast = { message, timestamp: Date.now() };
+    this.syncToastTimeout = setTimeout(() => {
+      this.syncToast = null;
+      this.syncToastTimeout = null;
+    }, 3500);
+  }
+
+  /**
+   * Immediately dismisses any active sync toast.
+   */
+  dismissSyncToast(): void {
+    if (this.syncToastTimeout) {
+      clearTimeout(this.syncToastTimeout);
+      this.syncToastTimeout = null;
+    }
+    this.syncToast = null;
+  }
+
+  /**
+   * Formats and records the most recent sync outcome.
+   */
+  setLastSyncResult(
+    provider: 'local-file' | 'github-gist',
+    counts: {
+      entriesAdded: number;
+      entriesUpdated: number;
+      entriesSoftDeleted: number;
+      entriesPurged: number;
+    },
+  ): VaultSyncResultSummary {
+    const providerName = provider === 'github-gist' ? 'GitHub Gist' : 'Local File';
+    const { summary, badgeText } = formatSyncSummary(counts, providerName);
+    const resultSummary: VaultSyncResultSummary = {
+      provider,
+      timestamp: Date.now(),
+      entriesAdded: counts.entriesAdded,
+      entriesUpdated: counts.entriesUpdated,
+      entriesSoftDeleted: counts.entriesSoftDeleted,
+      entriesPurged: counts.entriesPurged,
+      summary,
+      badgeText,
+    };
+    this.lastSyncResult = resultSummary;
+    return resultSummary;
+  }
 
   /**
    * Checks IndexedDB for existing encrypted vault.
@@ -199,6 +281,7 @@ class VaultStore {
     this.data = decrypted;
     this.status = 'unlocked';
     this.startAutoLockTimer();
+    void this.triggerBackgroundAutoSync();
   }
 
   /**
@@ -221,6 +304,7 @@ class VaultStore {
     this.data = decrypted;
     this.status = 'unlocked';
     this.startAutoLockTimer();
+    void this.triggerBackgroundAutoSync();
   }
 
   /**
@@ -230,6 +314,11 @@ class VaultStore {
     this.masterKey = null;
     this.data = null;
     this.status = 'locked';
+    this.syncToast = null;
+    if (this.syncToastTimeout) {
+      clearTimeout(this.syncToastTimeout);
+      this.syncToastTimeout = null;
+    }
     this.stopAutoLockTimer();
   }
 
@@ -585,6 +674,8 @@ class VaultStore {
     this.lockVault();
     await db.purgeAll();
     this.cachedPayload = null;
+    this.lastSyncResult = null;
+    this.syncToast = null;
     this.status = 'uninitialized';
   }
 
@@ -690,62 +781,103 @@ class VaultStore {
   }
 
   /**
+   * Applies the outcome of a sync operation: adopts credentials if needed,
+   * saves merged data, updates reactive status, and triggers toast if changes occurred.
+   */
+  private async applySyncResult(
+    provider: 'local-file' | 'github-gist',
+    result: SyncDriverResult,
+    updatedSettings: VaultSettings,
+  ): Promise<void> {
+    const finalData: VaultData = {
+      ...result.syncedVault,
+      settings: updatedSettings,
+      updatedAt: Math.max(result.syncedVault.updatedAt, Date.now()),
+    };
+
+    if (result.adoptedKey && result.adoptedKdf) {
+      this.masterKey = result.adoptedKey;
+      this.cachedPayload = {
+        ...this.cachedPayload!,
+        kdf: result.adoptedKdf,
+      };
+      await db.biometrics.clear();
+      finalData.settings.biometricUnlockEnabled = false;
+    }
+
+    await this.persistData(finalData);
+    this.syncStatus = 'synced';
+
+    const hasAnyChange =
+      result.entriesAdded > 0 ||
+      result.entriesUpdated > 0 ||
+      result.entriesSoftDeleted > 0 ||
+      result.entriesPurged > 0;
+
+    if (hasAnyChange || !this.lastSyncResult) {
+      this.setLastSyncResult(provider, result);
+    }
+    if (result.hasChanges && this.lastSyncResult) {
+      this.showSyncToast(this.lastSyncResult.summary);
+    }
+  }
+
+  /**
    * Performs full two-way sync with GitHub Gist.
    */
-  async syncWithGist(remotePassword?: string): Promise<GistSyncResult> {
+  async syncWithGist(
+    configOrPassword?: Partial<GistSyncConfig> | string,
+    remotePassword?: string,
+  ): Promise<GistSyncResult> {
     this.ensureUnlocked();
-    const gistConfig = this.data!.settings.gistSync;
-    if (!gistConfig?.token) {
+
+    const config = typeof configOrPassword === 'object' ? configOrPassword : undefined;
+    const actualRemotePassword =
+      typeof configOrPassword === 'string' ? configOrPassword : remotePassword;
+
+    const token = config?.token?.trim() || this.data!.settings.gistSync?.token?.trim();
+    const gistId =
+      config?.gistId !== undefined
+        ? config.gistId?.trim()
+        : this.data!.settings.gistSync?.gistId?.trim();
+    const autoSync = config?.autoSync ?? this.data!.settings.gistSync?.autoSync ?? true;
+
+    if (!token) {
       throw new Error('GitHub Personal Access Token is required for Gist sync.');
     }
 
+    this.isAutoSyncing = true;
     this.syncStatus = 'syncing';
     this.syncError = null;
 
     try {
       const result = await syncVaultWithGist(
-        gistConfig.token,
-        gistConfig.gistId,
+        token,
+        gistId,
         this.data!,
         this.masterKey!,
         this.cachedPayload!.kdf,
-        remotePassword,
+        actualRemotePassword,
       );
 
-      const now = Date.now();
-      const updatedSettings: VaultSettings = {
+      await this.applySyncResult('github-gist', result, {
         ...result.syncedVault.settings,
         syncProvider: 'github-gist',
         gistSync: {
-          ...gistConfig,
+          token,
+          autoSync,
           gistId: result.gistId,
-          lastSyncedAt: now,
+          lastSyncedAt: Date.now(),
         },
-      };
+      });
 
-      const finalData: VaultData = {
-        ...result.syncedVault,
-        settings: updatedSettings,
-        updatedAt: Math.max(result.syncedVault.updatedAt, now),
-      };
-
-      if (result.adoptedKey && result.adoptedKdf) {
-        this.masterKey = result.adoptedKey;
-        this.cachedPayload = {
-          ...this.cachedPayload!,
-          kdf: result.adoptedKdf,
-        };
-        await db.biometrics.clear();
-        finalData.settings.biometricUnlockEnabled = false;
-      }
-
-      await this.persistData(finalData);
-      this.syncStatus = 'synced';
       return result;
     } catch (err: unknown) {
       this.syncStatus = 'error';
       this.syncError = (err as Error).message || 'Failed to sync with GitHub Gist.';
       throw err;
+    } finally {
+      this.isAutoSyncing = false;
     }
   }
 
@@ -757,87 +889,40 @@ class VaultStore {
   async syncWithLocalFile(
     handle: FileSystemFileHandle,
     remotePassword?: string,
-  ): Promise<MergeResult> {
+  ): Promise<LocalFileSyncResult> {
     this.ensureUnlocked();
+    this.isAutoSyncing = true;
     this.syncStatus = 'syncing';
     this.syncError = null;
 
     try {
-      const remotePayload = await readVaultFromFileHandle(handle);
+      const result = await syncVaultWithLocalFile(
+        handle,
+        this.data!,
+        this.masterKey!,
+        this.cachedPayload!.kdf,
+        remotePassword,
+      );
 
-      const isSameSalt =
-        this.cachedPayload?.kdf?.salt &&
-        remotePayload.kdf?.salt &&
-        this.cachedPayload.kdf.salt === remotePayload.kdf.salt;
+      await storeLinkedHandle(handle);
 
-      let remoteData: VaultData;
-      let effectiveMasterKey: Uint8Array;
-      let adoptedKdf: KeyDerivationParams;
-
-      if (isSameSalt && !remotePassword) {
-        try {
-          remoteData = await decryptVault(remotePayload, this.masterKey!);
-          effectiveMasterKey = this.masterKey!;
-          adoptedKdf = this.cachedPayload!.kdf;
-        } catch {
-          throw new VaultSaltMismatchError(handle.name, handle);
-        }
-      } else {
-        if (!remotePassword) {
-          throw new VaultSaltMismatchError(handle.name, handle);
-        }
-
-        const { keyBytes } = await deriveMasterKey(remotePassword, remotePayload.kdf);
-        remoteData = await decryptVault(remotePayload, keyBytes);
-        effectiveMasterKey = keyBytes;
-        adoptedKdf = remotePayload.kdf;
-      }
-
-      const mergeResult = mergeVaultData(this.data!, remoteData);
-
-      const now = Date.now();
-      const updatedSettings: VaultSettings = {
-        ...mergeResult.merged.settings,
+      await this.applySyncResult('local-file', result, {
+        ...result.syncedVault.settings,
         syncProvider: 'local-file',
         localFileSync: {
           fileName: handle.name,
           autoSync: this.data!.settings.localFileSync?.autoSync ?? true,
-          lastSyncedAt: now,
+          lastSyncedAt: Date.now(),
         },
-      };
+      });
 
-      const finalData: VaultData = {
-        ...mergeResult.merged,
-        settings: updatedSettings,
-        updatedAt: Math.max(mergeResult.merged.updatedAt, now),
-      };
-
-      const keyOrSaltChanged =
-        effectiveMasterKey !== this.masterKey || this.cachedPayload!.kdf.salt !== adoptedKdf.salt;
-
-      if (keyOrSaltChanged) {
-        this.masterKey = effectiveMasterKey;
-        this.cachedPayload = {
-          ...this.cachedPayload!,
-          kdf: adoptedKdf,
-        };
-        await db.biometrics.clear();
-        finalData.settings.biometricUnlockEnabled = false;
-      }
-
-      await storeLinkedHandle(handle);
-      await this.persistData(finalData);
-
-      if (this.cachedPayload) {
-        await writeVaultToFileHandle(handle, this.cachedPayload);
-      }
-
-      this.syncStatus = 'synced';
-      return mergeResult;
+      return result;
     } catch (err: unknown) {
       this.syncStatus = 'error';
       this.syncError = (err as Error).message || 'Failed to sync with local file.';
       throw err;
+    } finally {
+      this.isAutoSyncing = false;
     }
   }
 
@@ -846,6 +931,7 @@ class VaultStore {
    */
   async saveToLocalFile(handle: FileSystemFileHandle): Promise<void> {
     this.ensureUnlocked();
+    this.isAutoSyncing = true;
     this.syncStatus = 'syncing';
     this.syncError = null;
 
@@ -871,10 +957,21 @@ class VaultStore {
       });
 
       this.syncStatus = 'synced';
+      const activeCount = this.data!.entries.filter((e) => !e.deletedAt).length;
+      const softDeletedCount = this.data!.entries.filter((e) => e.deletedAt).length;
+      const summary = this.setLastSyncResult('local-file', {
+        entriesAdded: activeCount,
+        entriesUpdated: 0,
+        entriesSoftDeleted: softDeletedCount,
+        entriesPurged: 0,
+      });
+      this.showSyncToast(summary.summary);
     } catch (err: unknown) {
       this.syncStatus = 'error';
       this.syncError = (err as Error).message || 'Failed to save to local file.';
       throw err;
+    } finally {
+      this.isAutoSyncing = false;
     }
   }
 
@@ -892,6 +989,18 @@ class VaultStore {
     await this.triggerAutoSync(payload, updatedData);
   }
 
+  /**
+   * Triggers a background sync with configured auto-sync providers.
+   * Throttled to at most once every 10 seconds unless forced.
+   */
+  async triggerBackgroundAutoSync(force = false): Promise<void> {
+    if (!this.data || !this.masterKey || !this.cachedPayload || this.isAutoSyncing) return;
+    const now = Date.now();
+    if (!force && now - this.lastAutoSyncTimestamp < 10000) return;
+    this.lastAutoSyncTimestamp = now;
+    await this.triggerAutoSync(this.cachedPayload, this.data);
+  }
+
   private async triggerAutoSync(payload: EncryptedVaultPayload, data: VaultData): Promise<void> {
     if (this.isAutoSyncing) return;
     this.isAutoSyncing = true;
@@ -902,8 +1011,17 @@ class VaultStore {
         const handle = await getLinkedHandle();
         if (handle) {
           try {
-            await writeVaultToFileHandle(handle, payload);
+            const result = await syncVaultWithLocalFile(
+              handle,
+              data,
+              this.masterKey!,
+              this.cachedPayload!.kdf,
+            );
             this.syncStatus = 'synced';
+            if (result.hasChanges) {
+              const summary = this.setLastSyncResult('local-file', result);
+              this.showSyncToast(summary.summary);
+            }
           } catch (err: unknown) {
             console.warn('Auto-save to local file failed:', err);
           }
@@ -917,12 +1035,29 @@ class VaultStore {
         data.settings.gistSync?.gistId
       ) {
         try {
-          await updateGistPayload(
+          const result = await syncVaultWithGist(
             data.settings.gistSync.token,
             data.settings.gistSync.gistId,
-            payload,
+            data,
+            this.masterKey!,
+            this.cachedPayload!.kdf,
           );
           this.syncStatus = 'synced';
+          if (result.hasChanges) {
+            const summary = this.setLastSyncResult('github-gist', result);
+            this.showSyncToast(summary.summary);
+
+            if (this.masterKey && this.cachedPayload) {
+              const updatedPayload = await encryptVault(
+                result.syncedVault,
+                this.masterKey,
+                this.cachedPayload.kdf,
+              );
+              await db.saveEncryptedVault(updatedPayload);
+              this.cachedPayload = updatedPayload;
+              this.data = result.syncedVault;
+            }
+          }
         } catch (err: unknown) {
           console.warn('Auto-sync to GitHub Gist failed:', err);
         }

@@ -1,20 +1,14 @@
-import { decryptVault, deriveMasterKey, encryptVault } from '$lib/core/crypto';
+import { encryptVault } from '$lib/core/crypto';
 import { mergeVaultData } from '$lib/core/sync/merge';
 import { GistSaltMismatchError } from '$lib/core/sync/errors';
+import { decryptRemotePayload, type SyncDriverResult } from './common';
 import type { EncryptedVaultPayload, KeyDerivationParams, VaultData } from '$lib/types';
 
 const GIST_FILENAME = 'vault2fa-encrypted.json';
 const GIST_DESCRIPTION = 'vault2fa Zero-Knowledge Encrypted Backup';
 
-export interface GistSyncResult {
+export interface GistSyncResult extends SyncDriverResult {
   gistId: string;
-  syncedVault: VaultData;
-  hasChanges: boolean;
-  entriesAdded: number;
-  entriesUpdated: number;
-  entriesDeleted: number;
-  adoptedKey?: Uint8Array;
-  adoptedKdf?: KeyDerivationParams;
 }
 
 export interface GitHubUser {
@@ -34,6 +28,7 @@ export async function validateGitHubToken(token: string): Promise<GitHubUser> {
   }
 
   const response = await fetch('https://api.github.com/user', {
+    cache: 'no-store',
     headers: {
       Authorization: `Bearer ${trimmed}`,
       Accept: 'application/vnd.github+json',
@@ -92,16 +87,16 @@ export async function fetchGistPayload(
   token: string,
   gistId: string,
 ): Promise<EncryptedVaultPayload> {
-  const response = await fetch(
-    `https://api.github.com/gists/${encodeURIComponent(gistId.trim())}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token.trim()}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+  const cleanGistId = gistId.trim();
+  const url = `https://api.github.com/gists/${encodeURIComponent(cleanGistId)}?_t=${Date.now()}`;
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${token.trim()}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
     },
-  );
+  });
 
   if (!response.ok) {
     if (response.status === 404) {
@@ -184,51 +179,41 @@ export async function syncVaultWithGist(
   if (!cleanGistId) {
     const encrypted = await encryptVault(localData, masterKey, kdfParams);
     const newGistId = await createGistWithPayload(cleanToken, encrypted);
+    const addedCount = localData.entries.filter((e) => !e.deletedAt).length;
+    const softDeletedCount = localData.entries.filter((e) => Boolean(e.deletedAt)).length;
     return {
       gistId: newGistId,
       syncedVault: localData,
-      hasChanges: false,
-      entriesAdded: 0,
+      hasChanges: addedCount > 0 || softDeletedCount > 0,
+      entriesAdded: addedCount,
       entriesUpdated: 0,
-      entriesDeleted: 0,
+      entriesSoftDeleted: softDeletedCount,
+      entriesPurged: 0,
     };
   }
 
   // Case 2: Existing Gist ID -> Pull, Decrypt, Merge, Push
   const remotePayload = await fetchGistPayload(cleanToken, cleanGistId);
-
-  const isSameSalt =
-    remotePayload.kdf?.salt && kdfParams?.salt && remotePayload.kdf.salt === kdfParams.salt;
-
-  let remoteData: VaultData;
-  let effectiveMasterKey: Uint8Array;
-  let effectiveKdf: KeyDerivationParams;
-
-  if (isSameSalt && !remotePassword) {
-    try {
-      remoteData = await decryptVault(remotePayload, masterKey);
-      effectiveMasterKey = masterKey;
-      effectiveKdf = kdfParams;
-    } catch {
-      throw new GistSaltMismatchError(cleanGistId, cleanToken);
-    }
-  } else {
-    if (!remotePassword) {
-      throw new GistSaltMismatchError(cleanGistId, cleanToken);
-    }
-
-    const { keyBytes } = await deriveMasterKey(remotePassword, remotePayload.kdf);
-    remoteData = await decryptVault(remotePayload, keyBytes);
-    effectiveMasterKey = keyBytes;
-    effectiveKdf = remotePayload.kdf;
-  }
+  const { remoteData, effectiveMasterKey, effectiveKdf } = await decryptRemotePayload(
+    remotePayload,
+    masterKey,
+    kdfParams,
+    remotePassword,
+    () => new GistSaltMismatchError(cleanGistId, cleanToken),
+  );
 
   // Merge using LWW and tombstones
   const mergeResult = mergeVaultData(localData, remoteData);
 
   // If merged vault differs from remote or adopted new credentials, push updated payload
-  const updatedPayload = await encryptVault(mergeResult.merged, effectiveMasterKey, effectiveKdf);
-  await updateGistPayload(cleanToken, cleanGistId, updatedPayload);
+  if (
+    mergeResult.hasChanges ||
+    effectiveMasterKey !== masterKey ||
+    effectiveKdf.salt !== kdfParams.salt
+  ) {
+    const updatedPayload = await encryptVault(mergeResult.merged, effectiveMasterKey, effectiveKdf);
+    await updateGistPayload(cleanToken, cleanGistId, updatedPayload);
+  }
 
   return {
     gistId: cleanGistId,
@@ -236,7 +221,8 @@ export async function syncVaultWithGist(
     hasChanges: mergeResult.hasChanges,
     entriesAdded: mergeResult.entriesAdded,
     entriesUpdated: mergeResult.entriesUpdated,
-    entriesDeleted: mergeResult.entriesDeleted,
+    entriesSoftDeleted: mergeResult.entriesSoftDeleted,
+    entriesPurged: mergeResult.entriesPurged,
     adoptedKey: effectiveMasterKey !== masterKey ? effectiveMasterKey : undefined,
     adoptedKdf: effectiveKdf.salt !== kdfParams.salt ? effectiveKdf : undefined,
   };
