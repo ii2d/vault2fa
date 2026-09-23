@@ -213,9 +213,26 @@ describe('Native Backup & Restore', () => {
     expect(detectBackupFormat(backup)).toBe('vault2fa-encrypted');
   });
 
-  it('detects vault2fa decrypted format', () => {
-    const backup = exportDecryptedBackup(mockVault);
+  it('detects vault2fa decrypted format and scrubs sensitive sync tokens', () => {
+    const vaultWithToken: VaultData = {
+      ...mockVault,
+      settings: {
+        ...mockVault.settings,
+        gistSync: {
+          token: 'ghp_super_secret_pat_12345',
+          gistId: 'test_gist_id',
+          autoSync: true,
+        },
+      },
+    };
+
+    const backup = exportDecryptedBackup(vaultWithToken);
     expect(detectBackupFormat(backup)).toBe('vault2fa-decrypted');
+    expect(backup).not.toContain('ghp_super_secret_pat_12345');
+
+    const parsed = JSON.parse(backup);
+    expect(parsed.vault.settings.gistSync.token).toBe('');
+    expect(parsed.vault.settings.gistSync.gistId).toBe('test_gist_id');
   });
 
   it('detects unknown format', () => {

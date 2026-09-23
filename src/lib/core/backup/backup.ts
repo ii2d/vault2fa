@@ -48,14 +48,29 @@ export function exportEncryptedBackup(payload: EncryptedVaultPayload): string {
 }
 
 /**
- * Generates an unencrypted backup JSON string.
+ * Generates an unencrypted backup JSON string with sensitive credentials scrubbed.
  */
 export function exportDecryptedBackup(vault: VaultData): string {
+  const sanitizedVault: VaultData = {
+    ...vault,
+    settings: {
+      ...vault.settings,
+      ...(vault.settings.gistSync
+        ? {
+            gistSync: {
+              ...vault.settings.gistSync,
+              token: '',
+            },
+          }
+        : {}),
+    },
+  };
+
   const backupObject = {
     exportedAt: new Date().toISOString(),
     generator: 'vault2fa',
     warning: 'UNENCRYPTED BACKUP - STORE SECURELY',
-    vault,
+    vault: sanitizedVault,
   };
   return JSON.stringify(backupObject, null, 2);
 }
