@@ -2,6 +2,19 @@
   "name": "vault2fa",
   "private": true,
   "version": "0.3.0",
+  "description": "Zero-knowledge, local-first 2FA/TOTP authenticator PWA built with Svelte 5 & Argon2id",
+  "keywords": [
+    "2fa",
+    "totp",
+    "authenticator",
+    "zero-knowledge",
+    "pwa",
+    "svelte5",
+    "webauthn",
+    "argon2id",
+    "local-first",
+    "cryptography"
+  ],
   "type": "module",
   "packageManager": "pnpm@11.8.0",
   "engines": {

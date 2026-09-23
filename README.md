@@ -3,6 +3,7 @@
 > A modern, zero-knowledge, local-first 2FA/TOTP authenticator PWA built with Svelte 5 and WebAssembly encryption.
 
 [![Version](https://img.shields.io/github/package-json/v/ii2d/vault2fa?color=blue)](package.json)
+[![CI](https://github.com/ii2d/vault2fa/actions/workflows/ci.yml/badge.svg)](https://github.com/ii2d/vault2fa/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Security: Threat Model](https://img.shields.io/badge/Security-Threat%20Model-purple.svg)](SECURITY.md)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5.0-orange?logo=svelte)](https://svelte.dev/)
