@@ -13,6 +13,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="%APP_DESCRIPTION%" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com ws: wss:; worker-src 'self' blob:; object-src 'none'; base-uri 'self';"
+    />
     <title>%APP_NAME% - %APP_TITLE%</title>
   </head>
 
