@@ -73,3 +73,15 @@ jobs:
 
       - name: Run dependency vulnerability audit
         run: pnpm run audit
+
+      - name: Generate CycloneDX SBOM
+        run: pnpm sbom --sbom-format cyclonedx --sbom-spec-version 1.6 --sbom-type application --out dist/sbom.cdx.json
+
+      - name: Scan CycloneDX SBOM with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'sbom'
+          scan-ref: 'dist/sbom.cdx.json'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
