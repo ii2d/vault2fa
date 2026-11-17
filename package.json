@@ -40,7 +40,7 @@
     "@tailwindcss/vite": "^4.3.5",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^26.6.6",
-    "eslint": "^10.14.0",
+    "eslint": "^10.15.0",
     "eslint-plugin-svelte": "^3.24.1",
     "fake-indexeddb": "^6.2.8",
     "globals": "^17.14.0",
