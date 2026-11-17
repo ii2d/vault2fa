@@ -38,7 +38,7 @@
     "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/vite": "^4.3.5",
-    "@tsconfig/svelte": "^5.0.8",
+    "@tsconfig/svelte": "^5.0.9",
     "@types/node": "^26.6.6",
     "eslint": "^10.15.0",
     "eslint-plugin-svelte": "^3.24.1",
