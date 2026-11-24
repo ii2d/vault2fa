@@ -125,9 +125,9 @@
           {/if}
           <div class="flex items-center justify-between">
             <span class="text-zinc-500">Auto-Sync:</span>
-            <span class="font-medium text-emerald-400"
-              >{config.autoSync ? 'Enabled' : 'Disabled'}</span
-            >
+            <span class="font-medium text-emerald-400">
+              {config.autoSync ? 'Enabled' : 'Disabled'}
+            </span>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-zinc-500">Zero-Knowledge:</span>

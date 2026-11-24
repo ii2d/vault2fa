@@ -257,8 +257,9 @@
         >
           <span
             class="font-mono text-xl tracking-[0.2em] whitespace-nowrap text-zinc-500 sm:text-2xl"
-            >••••••</span
           >
+            ••••••
+          </span>
           <Eye class="h-4 w-4 shrink-0 text-indigo-400" />
         </button>
       {:else}
