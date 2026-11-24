@@ -68,6 +68,6 @@
     "dexie": "^4.4.7",
     "hash-wasm": "^4.13.0",
     "otpauth": "^9.6.0",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.1"
   }
 }
