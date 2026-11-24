@@ -233,8 +233,9 @@
                 handwritten Master Password, or import your encrypted
                 <code
                   class="rounded bg-zinc-800 px-1 py-0.5 text-[11px] print:border print:border-black/20 print:bg-zinc-200 print:text-black"
-                  >.json</code
-                > backup file.
+                >
+                  .json
+                </code> backup file.
               </p>
             </div>
           </div>

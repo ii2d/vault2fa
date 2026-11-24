@@ -108,9 +108,9 @@
             class="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/30 p-4 text-xs text-emerald-300"
           >
             <CheckCircle2 class="h-5 w-5 shrink-0 text-emerald-400" />
-            <span
-              >{APP_CONFIG.name} is already installed and running in standalone mode on this device.</span
-            >
+            <span>
+              {APP_CONFIG.name} is already installed and running in standalone mode on this device.
+            </span>
           </div>
         {/if}
 
@@ -257,13 +257,15 @@
                   <p class="leading-relaxed text-zinc-400">
                     Tap <span
                       class="rounded border border-white/10 bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-200"
-                      >Install app</span
                     >
+                      Install app
+                    </span>
                     or
                     <span
                       class="rounded border border-white/10 bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-200"
-                      >Add to Home screen</span
-                    >.
+                    >
+                      Add to Home screen
+                    </span>.
                   </p>
                 </div>
               </li>
@@ -304,12 +306,13 @@
                   <p class="leading-relaxed text-zinc-400">
                     Look for the <span
                       class="rounded border border-white/10 bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-200"
-                      >Install</span
                     >
+                      Install
+                    </span>
                     icon in the right side of the address bar, or click Menu &rarr;
-                    <strong class="text-white"
-                      >Save and Share &rarr; Install {APP_CONFIG.name}</strong
-                    >.
+                    <strong class="text-white">
+                      Save and Share &rarr; Install {APP_CONFIG.name}
+                    </strong>.
                   </p>
                 </div>
               </li>
@@ -328,8 +331,9 @@
                     Click <strong class="text-white">File</strong> in the macOS menu bar and select
                     <span
                       class="rounded border border-white/10 bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-200"
-                      >Add to Dock...</span
-                    >.
+                    >
+                      Add to Dock...
+                    </span>.
                   </p>
                 </div>
               </li>

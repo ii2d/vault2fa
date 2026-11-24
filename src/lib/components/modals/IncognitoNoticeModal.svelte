@@ -62,8 +62,10 @@
               </p>
               <p class="mt-1 text-[11px] leading-relaxed text-amber-300/90">
                 Attempting to link or persist local <code
-                  class="rounded bg-black/40 px-1 py-0.5 font-mono text-amber-200">.vault</code
+                  class="rounded bg-black/40 px-1 py-0.5 font-mono text-amber-200"
                 >
+                  .vault
+                </code>
                 files via the File System Access API while in Chrome Incognito mode will cause the entire
                 browser to crash.
               </p>
@@ -89,9 +91,12 @@
               href="https://issues.chromium.org/"
               target="_blank"
               rel="noopener noreferrer"
-              class="text-indigo-400 underline hover:text-indigo-300">Issue #562119515</a
-            >), persisting a native file handle into in-memory IndexedDB crashes the browser process
-            instantly. This is a browser engine limitation that cannot be caught by JavaScript.
+              class="text-indigo-400 underline hover:text-indigo-300"
+            >
+              Issue #562119515
+            </a>), persisting a native file handle into in-memory IndexedDB crashes the browser
+            process instantly. This is a browser engine limitation that cannot be caught by
+            JavaScript.
           </p>
         </div>
 

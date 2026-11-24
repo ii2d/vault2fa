@@ -549,9 +549,9 @@
                 </button>
               </div>
               <p class="mt-1 text-[11px] leading-relaxed text-zinc-300">
-                Do not link <code class="rounded bg-black/40 px-1 py-0.5 font-mono text-amber-200"
-                  >.vault</code
-                >
+                Do not link <code class="rounded bg-black/40 px-1 py-0.5 font-mono text-amber-200">
+                  .vault
+                </code>
                 files in Incognito mode—a Chromium bug will crash the browser. Use a regular window, or
                 use <strong>Select Backup File</strong> below.
               </p>

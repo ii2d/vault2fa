@@ -79,14 +79,14 @@
           <option value={group.id} class="bg-zinc-900 text-zinc-100">{group.name} ({count})</option>
         {/each}
         {#if uncategorizedCount > 0}
-          <option value="uncategorized" class="bg-zinc-900 text-zinc-100"
-            >Uncategorized ({uncategorizedCount})</option
-          >
+          <option value="uncategorized" class="bg-zinc-900 text-zinc-100">
+            Uncategorized ({uncategorizedCount})
+          </option>
         {/if}
         {#if deletedCount > 0 || vault.activeGroupId === 'deleted'}
-          <option value="deleted" class="bg-zinc-900 font-semibold text-amber-400"
-            >Recently Deleted ({deletedCount})</option
-          >
+          <option value="deleted" class="bg-zinc-900 font-semibold text-amber-400">
+            Recently Deleted ({deletedCount})
+          </option>
         {/if}
       </select>
       <ChevronDown class="pointer-events-none absolute top-2.5 right-3 h-4 w-4 text-zinc-400" />

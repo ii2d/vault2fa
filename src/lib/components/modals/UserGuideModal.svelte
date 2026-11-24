@@ -173,10 +173,10 @@
             <span>Chrome Incognito Mode Advisory</span>
           </div>
           <p class="text-[11px] text-zinc-300">
-            Do not use Chrome Incognito mode to link local <code class="font-mono text-amber-200"
-              >.vault</code
-            > files. Due to an internal Chromium bug (Issue #562119515), saving a native file handle into
-            in-memory IndexedDB crashes the entire browser process.
+            Do not use Chrome Incognito mode to link local <code class="font-mono text-amber-200">
+              .vault
+            </code> files. Due to an internal Chromium bug (Issue #562119515), saving a native file handle
+            into in-memory IndexedDB crashes the entire browser process.
           </p>
           <p class="text-[11px] text-zinc-400">
             To restore or use {APP_CONFIG.name} in Incognito mode safely, use

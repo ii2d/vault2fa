@@ -194,9 +194,9 @@
         <!-- Divider -->
         <div class="my-3.5 flex w-full items-center gap-2">
           <div class="h-px flex-1 bg-white/10"></div>
-          <span class="text-[10px] font-medium tracking-wider text-zinc-500 uppercase"
-            >or paste Config URI</span
-          >
+          <span class="text-[10px] font-medium tracking-wider text-zinc-500 uppercase">
+            or paste Config URI
+          </span>
           <div class="h-px flex-1 bg-white/10"></div>
         </div>
 
